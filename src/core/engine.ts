@@ -373,6 +373,90 @@ function calculatePlayerMove(state: GameState, direction: Direction): GameState 
     };
   }
 
+  // Pickaxe Tool Pickup
+  if (targetTile === 'pickaxe') {
+    const newGrid = state.grid.map((row, y) => {
+      if (y !== targetY) return row;
+      const newRow = [...row];
+      newRow[targetX] = 'floor';
+      return newRow;
+    });
+
+    return {
+      ...state,
+      grid: newGrid,
+      player: { x: targetX, y: targetY },
+      hasPickaxe: true,
+      moveCount: state.moveCount + 1,
+      status: 'playing',
+    };
+  }
+
+  // Fire Tool Pickup
+  if (targetTile === 'fire') {
+    const newGrid = state.grid.map((row, y) => {
+      if (y !== targetY) return row;
+      const newRow = [...row];
+      newRow[targetX] = 'floor';
+      return newRow;
+    });
+
+    return {
+      ...state,
+      grid: newGrid,
+      player: { x: targetX, y: targetY },
+      hasFire: true,
+      moveCount: state.moveCount + 1,
+      status: 'playing',
+    };
+  }
+
+  // Cracked Wall: breakable with pickaxe
+  if (targetTile === 'cracked_wall') {
+    if (!state.hasPickaxe) {
+      // Cannot break without pickaxe
+      return state;
+    }
+
+    const newGrid = state.grid.map((row, y) => {
+      if (y !== targetY) return row;
+      const newRow = [...row];
+      newRow[targetX] = 'floor';
+      return newRow;
+    });
+
+    return {
+      ...state,
+      grid: newGrid,
+      player: { x: targetX, y: targetY },
+      moveCount: state.moveCount + 1,
+      status: 'playing',
+    };
+  }
+
+  // Bush: burnable with fire
+  if (targetTile === 'bush') {
+    if (!state.hasFire) {
+      // Cannot burn without fire
+      return state;
+    }
+
+    const newGrid = state.grid.map((row, y) => {
+      if (y !== targetY) return row;
+      const newRow = [...row];
+      newRow[targetX] = 'floor';
+      return newRow;
+    });
+
+    return {
+      ...state,
+      grid: newGrid,
+      player: { x: targetX, y: targetY },
+      moveCount: state.moveCount + 1,
+      status: 'playing',
+    };
+  }
+
   // Spikes Hazard behavior
   if (targetTile === 'spikes') {
     if (state.hasSpikeBoots) {
@@ -556,6 +640,18 @@ export function renderAscii(state: GameState): string {
             break;
           case 'spike_boots':
             rowStr += 'I';
+            break;
+          case 'cracked_wall':
+            rowStr += 'c';
+            break;
+          case 'bush':
+            rowStr += 'b';
+            break;
+          case 'pickaxe':
+            rowStr += 'p';
+            break;
+          case 'fire':
+            rowStr += 'f';
             break;
         }
       }

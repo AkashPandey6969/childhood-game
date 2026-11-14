@@ -20,5 +20,7 @@
 - `I`: Spike Boots (item that allows safely walking over spikes)
 - `R`: Rolling Boulder
 - `S`: Simple Patrolling Enemy
+- `p`: Pickaxe (tool item to break cracked walls)
 - `c`: Cracked Wall (breakable with pickaxe)
+- `f`: Fire Item (tool item to burn bushes)
 - `b`: Bush (burnable with fire item)

@@ -12,7 +12,11 @@ export type TileType =
   | 'spikes'      // ^
   | 'spike_boots' // I
   | 'boulder'     // R
-  | 'enemy';      // S
+  | 'enemy'       // S
+  | 'cracked_wall'// c
+  | 'bush'        // b
+  | 'pickaxe'     // p
+  | 'fire';       // f
 
 export type Direction = 'up' | 'down' | 'left' | 'right';
 
@@ -63,6 +67,8 @@ export interface GameState {
   readonly totalDiamonds: number;
   readonly keys: number;
   readonly hasSpikeBoots: boolean;
+  readonly hasPickaxe: boolean;
+  readonly hasFire: boolean;
   readonly moveCount: number;
   readonly status: GameStatus;
 }

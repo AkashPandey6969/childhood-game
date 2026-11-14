@@ -94,6 +94,18 @@ export function parseAsciiLevel(ascii: string): LevelData {
           });
           row.push('floor');
           break;
+        case 'c':
+          row.push('cracked_wall');
+          break;
+        case 'b':
+          row.push('bush');
+          break;
+        case 'p':
+          row.push('pickaxe');
+          break;
+        case 'f':
+          row.push('fire');
+          break;
         default:
           throw new Error(`Unrecognized map character '${char}' at row ${y + 1}, column ${x + 1}`);
       }
@@ -152,6 +164,8 @@ export function createInitialState(level: LevelData): GameState {
     totalDiamonds: level.totalDiamonds,
     keys: 0,
     hasSpikeBoots: false,
+    hasPickaxe: false,
+    hasFire: false,
     moveCount: 0,
     status: 'playing',
   };

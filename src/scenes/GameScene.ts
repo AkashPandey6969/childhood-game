@@ -8,6 +8,7 @@ import level5Raw from '../levels/level5_hole.txt?raw';
 import level6Raw from '../levels/level6_spikes.txt?raw';
 import level7Raw from '../levels/level7_boulder.txt?raw';
 import level8Raw from '../levels/level8_enemy.txt?raw';
+import level9Raw from '../levels/level9_tools.txt?raw';
 
 interface LevelEntry {
   title: string;
@@ -23,6 +24,7 @@ const LEVELS: LevelEntry[] = [
   { title: 'Level 6: Deadly Spikes', raw: level6Raw },
   { title: 'Level 7: Rolling Boulders', raw: level7Raw },
   { title: 'Level 8: Patrolling Beasts', raw: level8Raw },
+  { title: "Level 9: Explorer's Tools", raw: level9Raw },
 ];
 
 export class GameScene extends Phaser.Scene {
@@ -50,6 +52,10 @@ export class GameScene extends Phaser.Scene {
   private spikeBootsObjects: Map<string, Phaser.GameObjects.Graphics> = new Map();
   private boulderObjects: Map<number, Phaser.GameObjects.Container> = new Map();
   private enemyObjects: Map<number, Phaser.GameObjects.Container> = new Map();
+  private crackedWallObjects: Map<string, Phaser.GameObjects.Graphics> = new Map();
+  private bushObjects: Map<string, Phaser.GameObjects.Container> = new Map();
+  private pickaxeObjects: Map<string, Phaser.GameObjects.Container> = new Map();
+  private fireObjects: Map<string, Phaser.GameObjects.Container> = new Map();
   private exitObject!: Phaser.GameObjects.Container;
   private exitGlow!: Phaser.GameObjects.Graphics;
 
@@ -58,6 +64,8 @@ export class GameScene extends Phaser.Scene {
   private diamondsText!: Phaser.GameObjects.Text;
   private keysText!: Phaser.GameObjects.Text;
   private bootsText!: Phaser.GameObjects.Text;
+  private pickaxeText!: Phaser.GameObjects.Text;
+  private fireText!: Phaser.GameObjects.Text;
   private movesText!: Phaser.GameObjects.Text;
   private undoButtonText!: Phaser.GameObjects.Text;
   private winModalContainer?: Phaser.GameObjects.Container;
@@ -131,6 +139,10 @@ export class GameScene extends Phaser.Scene {
     this.spikeBootsObjects.clear();
     this.boulderObjects.clear();
     this.enemyObjects.clear();
+    this.crackedWallObjects.clear();
+    this.bushObjects.clear();
+    this.pickaxeObjects.clear();
+    this.fireObjects.clear();
 
     const state = this.session.getState();
 
@@ -217,6 +229,30 @@ export class GameScene extends Phaser.Scene {
         if (tile === 'door') {
           const doorObj = this.renderDoor(x, y);
           this.doorObjects.set(`${x},${y}`, doorObj);
+        }
+
+        // Cracked Walls
+        if (tile === 'cracked_wall') {
+          const wallGfx = this.renderCrackedWall(x, y);
+          this.crackedWallObjects.set(`${x},${y}`, wallGfx);
+        }
+
+        // Bushes
+        if (tile === 'bush') {
+          const bushObj = this.renderBush(x, y);
+          this.bushObjects.set(`${x},${y}`, bushObj);
+        }
+
+        // Pickaxe Tool
+        if (tile === 'pickaxe') {
+          const pickObj = this.renderPickaxe(x, y);
+          this.pickaxeObjects.set(`${x},${y}`, pickObj);
+        }
+
+        // Fire Tool
+        if (tile === 'fire') {
+          const fireObj = this.renderFire(x, y);
+          this.fireObjects.set(`${x},${y}`, fireObj);
         }
       }
     }
@@ -361,6 +397,188 @@ export class GameScene extends Phaser.Scene {
       targets: gfx,
       scaleY: 1.08,
       duration: 350,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    this.tileContainer.add(container);
+    return container;
+  }
+
+  private renderCrackedWall(x: number, y: number): Phaser.GameObjects.Graphics {
+    const { x: px, y: py } = this.tileToPixel(x, y);
+    const gfx = this.add.graphics();
+    const size = this.tileSize * 0.9;
+
+    // Stone base
+    gfx.fillStyle(0x475569, 1);
+    gfx.fillRoundedRect(px - size / 2, py - size / 2, size, size, 4);
+
+    // Stone border
+    gfx.lineStyle(2, 0x334155, 1);
+    gfx.strokeRoundedRect(px - size / 2, py - size / 2, size, size, 4);
+
+    // Deep jagged cracks
+    gfx.lineStyle(2, 0x0f172a, 1);
+    gfx.beginPath();
+    gfx.moveTo(px - size * 0.4, py - size * 0.4);
+    gfx.lineTo(px - size * 0.1, py - size * 0.1);
+    gfx.lineTo(px - size * 0.25, py + size * 0.2);
+    gfx.lineTo(px + size * 0.1, py + size * 0.4);
+    gfx.moveTo(px - size * 0.1, py - size * 0.1);
+    gfx.lineTo(px + size * 0.3, py - size * 0.2);
+    gfx.lineTo(px + size * 0.4, py + size * 0.3);
+    gfx.strokePath();
+
+    // Chalky highlight cracks
+    gfx.lineStyle(1, 0x94a3b8, 0.7);
+    gfx.beginPath();
+    gfx.moveTo(px - size * 0.38, py - size * 0.42);
+    gfx.lineTo(px - size * 0.08, py - size * 0.12);
+    gfx.strokePath();
+
+    this.tileContainer.add(gfx);
+    return gfx;
+  }
+
+  private renderBush(x: number, y: number): Phaser.GameObjects.Container {
+    const { x: px, y: py } = this.tileToPixel(x, y);
+    const container = this.add.container(px, py);
+    const r = this.tileSize * 0.22;
+
+    const gfx = this.add.graphics();
+
+    // Dark shadow under foliage
+    gfx.fillStyle(0x052e16, 0.4);
+    gfx.fillEllipse(0, r * 1.4, r * 3, r * 1.2);
+
+    // Overlapping thorny bush foliage circles
+    const foliage = [
+      { x: -r * 0.8, y: r * 0.3, col: 0x14532d, s: r * 0.9 },
+      { x: r * 0.8, y: r * 0.3, col: 0x14532d, s: r * 0.9 },
+      { x: -r * 0.5, y: -r * 0.4, col: 0x166534, s: r * 0.95 },
+      { x: r * 0.5, y: -r * 0.4, col: 0x166534, s: r * 0.95 },
+      { x: 0, y: 0, col: 0x15803d, s: r * 1.1 },
+    ];
+
+    for (const f of foliage) {
+      gfx.fillStyle(f.col, 1);
+      gfx.fillCircle(f.x, f.y, f.s);
+    }
+
+    // Thorny branches
+    gfx.lineStyle(1.5, 0x78350f, 0.9);
+    gfx.beginPath();
+    gfx.moveTo(-r * 0.6, r * 0.2);
+    gfx.lineTo(0, -r * 0.2);
+    gfx.lineTo(r * 0.6, r * 0.3);
+    gfx.strokePath();
+
+    // Red berries
+    gfx.fillStyle(0xef4444, 1);
+    gfx.fillCircle(-r * 0.4, -r * 0.1, 2.5);
+    gfx.fillCircle(r * 0.3, r * 0.1, 2.5);
+    gfx.fillCircle(0, r * 0.5, 2.5);
+
+    container.add(gfx);
+
+    // Gentle rustle tween
+    this.tweens.add({
+      targets: gfx,
+      scaleX: 1.05,
+      duration: 500,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    this.tileContainer.add(container);
+    return container;
+  }
+
+  private renderPickaxe(x: number, y: number): Phaser.GameObjects.Container {
+    const { x: px, y: py } = this.tileToPixel(x, y);
+    const container = this.add.container(px, py);
+    const size = this.tileSize * 0.4;
+
+    const gfx = this.add.graphics();
+
+    // Aura
+    gfx.fillStyle(0x60a5fa, 0.25);
+    gfx.fillCircle(0, 0, size * 1.3);
+
+    // Wooden Handle (diagonal)
+    gfx.lineStyle(3, 0x78350f, 1);
+    gfx.beginPath();
+    gfx.moveTo(-size * 0.6, size * 0.6);
+    gfx.lineTo(size * 0.3, -size * 0.3);
+    gfx.strokePath();
+
+    // Steel Pick Head (curved arc)
+    gfx.lineStyle(3.5, 0xe2e8f0, 1);
+    gfx.beginPath();
+    gfx.moveTo(-size * 0.2, -size * 0.7);
+    gfx.lineTo(size * 0.3, -size * 0.3);
+    gfx.lineTo(size * 0.7, 0.2 * size);
+    gfx.strokePath();
+
+    // Pick head point highlights
+    gfx.fillStyle(0x38bdf8, 1);
+    gfx.fillCircle(-size * 0.2, -size * 0.7, 2);
+    gfx.fillCircle(size * 0.7, 0.2 * size, 2);
+
+    container.add(gfx);
+
+    // Floating bobbing tween
+    this.tweens.add({
+      targets: container,
+      y: py - 3,
+      duration: 650,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    this.tileContainer.add(container);
+    return container;
+  }
+
+  private renderFire(x: number, y: number): Phaser.GameObjects.Container {
+    const { x: px, y: py } = this.tileToPixel(x, y);
+    const container = this.add.container(px, py);
+    const size = this.tileSize * 0.38;
+
+    const gfx = this.add.graphics();
+
+    // Fire warmth aura
+    gfx.fillStyle(0xf97316, 0.3);
+    gfx.fillCircle(0, 0, size * 1.4);
+
+    // Torch handle / base
+    gfx.fillStyle(0x451a03, 1);
+    gfx.fillRect(-size * 0.2, size * 0.2, size * 0.4, size * 0.7);
+
+    // Outer flame (crimson red)
+    gfx.fillStyle(0xd97706, 1);
+    gfx.fillTriangle(-size * 0.5, size * 0.2, size * 0.5, size * 0.2, 0, -size * 0.8);
+
+    // Inner flame (bright orange)
+    gfx.fillStyle(0xf97316, 1);
+    gfx.fillTriangle(-size * 0.35, size * 0.2, size * 0.35, size * 0.2, 0, -size * 0.6);
+
+    // Core flame (yellow)
+    gfx.fillStyle(0xfef08a, 1);
+    gfx.fillTriangle(-size * 0.2, size * 0.2, size * 0.2, size * 0.2, 0, -size * 0.35);
+
+    container.add(gfx);
+
+    // Fire flicker tween
+    this.tweens.add({
+      targets: gfx,
+      scaleX: 1.15,
+      scaleY: 1.15,
+      duration: 250,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
@@ -814,10 +1032,26 @@ export class GameScene extends Phaser.Scene {
     });
 
     // Spike Boots status
-    this.bootsText = this.add.text(165, 42, '🥾 Boots', {
+    this.bootsText = this.add.text(160, 42, '🥾', {
       fontFamily: 'system-ui, -apple-system, sans-serif',
       fontSize: '14px',
       color: '#38bdf8',
+      fontStyle: 'bold',
+    });
+
+    // Pickaxe Tool status
+    this.pickaxeText = this.add.text(184, 42, '⛏️', {
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontSize: '14px',
+      color: '#94a3b8',
+      fontStyle: 'bold',
+    });
+
+    // Fire Tool status
+    this.fireText = this.add.text(208, 42, '🔥', {
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontSize: '14px',
+      color: '#f97316',
       fontStyle: 'bold',
     });
 
@@ -903,6 +1137,8 @@ export class GameScene extends Phaser.Scene {
     this.diamondsText.setText(`💎 ${state.collectedDiamonds} / ${state.totalDiamonds}`);
     this.keysText.setText(`🔑 ${state.keys}`);
     this.bootsText.setAlpha(state.hasSpikeBoots ? 1.0 : 0.25);
+    this.pickaxeText.setAlpha(state.hasPickaxe ? 1.0 : 0.25);
+    this.fireText.setAlpha(state.hasFire ? 1.0 : 0.25);
     this.movesText.setText(`Moves: ${state.moveCount}`);
 
     const canUndo = this.session.canUndo();
@@ -1058,6 +1294,74 @@ export class GameScene extends Phaser.Scene {
         onComplete: () => {
           unlockedDoorContainer.destroy();
           this.doorObjects.delete(doorKey);
+        },
+      });
+    }
+
+    // Pickaxe pickup animation
+    const pickKey = `${nextState.player.x},${nextState.player.y}`;
+    const collectedPickContainer = this.pickaxeObjects.get(pickKey);
+    if (collectedPickContainer) {
+      this.tweens.add({
+        targets: collectedPickContainer,
+        scaleX: 1.8,
+        scaleY: 1.8,
+        alpha: 0,
+        duration: 140,
+        onComplete: () => {
+          collectedPickContainer.destroy();
+          this.pickaxeObjects.delete(pickKey);
+        },
+      });
+    }
+
+    // Fire pickup animation
+    const fireKey = `${nextState.player.x},${nextState.player.y}`;
+    const collectedFireContainer = this.fireObjects.get(fireKey);
+    if (collectedFireContainer) {
+      this.tweens.add({
+        targets: collectedFireContainer,
+        scaleX: 1.8,
+        scaleY: 1.8,
+        alpha: 0,
+        duration: 140,
+        onComplete: () => {
+          collectedFireContainer.destroy();
+          this.fireObjects.delete(fireKey);
+        },
+      });
+    }
+
+    // Cracked wall breaking animation
+    const crackedKey = `${nextState.player.x},${nextState.player.y}`;
+    const brokenWallGfx = this.crackedWallObjects.get(crackedKey);
+    if (brokenWallGfx) {
+      this.tweens.add({
+        targets: brokenWallGfx,
+        scaleX: 0.1,
+        scaleY: 0.1,
+        alpha: 0,
+        duration: 140,
+        onComplete: () => {
+          brokenWallGfx.destroy();
+          this.crackedWallObjects.delete(crackedKey);
+        },
+      });
+    }
+
+    // Bush burning animation
+    const bushKey = `${nextState.player.x},${nextState.player.y}`;
+    const burnedBushContainer = this.bushObjects.get(bushKey);
+    if (burnedBushContainer) {
+      this.tweens.add({
+        targets: burnedBushContainer,
+        scaleX: 0.1,
+        scaleY: 0.1,
+        alpha: 0,
+        duration: 150,
+        onComplete: () => {
+          burnedBushContainer.destroy();
+          this.bushObjects.delete(bushKey);
         },
       });
     }
