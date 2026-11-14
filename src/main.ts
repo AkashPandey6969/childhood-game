@@ -1,6 +1,9 @@
 import Phaser from 'phaser';
 import { BootScene } from './scenes/BootScene';
+import { MainMenuScene } from './scenes/MainMenuScene';
+import { LevelSelectScene } from './scenes/LevelSelectScene';
 import { GameScene } from './scenes/GameScene';
+import { PauseScene } from './scenes/PauseScene';
 
 export const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -12,7 +15,7 @@ export const config: Phaser.Types.Core.GameConfig = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [BootScene, GameScene],
+  scene: [BootScene, MainMenuScene, LevelSelectScene, GameScene, PauseScene],
 };
 
 window.addEventListener('DOMContentLoaded', () => {

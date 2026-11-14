@@ -1,34 +1,16 @@
 import Phaser from 'phaser';
 import { GameSession, parseAsciiLevel, Direction, LevelData, isGateOpen, BoulderState, EnemyState } from '../core';
-import level1Raw from '../levels/level1.txt?raw';
-import level2Raw from '../levels/level2_block.txt?raw';
-import level3Raw from '../levels/level3_key_door.txt?raw';
-import level4Raw from '../levels/level4_switch_gate.txt?raw';
-import level5Raw from '../levels/level5_hole.txt?raw';
-import level6Raw from '../levels/level6_spikes.txt?raw';
-import level7Raw from '../levels/level7_boulder.txt?raw';
-import level8Raw from '../levels/level8_enemy.txt?raw';
-import level9Raw from '../levels/level9_tools.txt?raw';
-
-interface LevelEntry {
-  title: string;
-  raw: string;
-}
-
-const LEVELS: LevelEntry[] = [
-  { title: 'Level 1: The Descent', raw: level1Raw },
-  { title: 'Level 2: Pushable Blocks', raw: level2Raw },
-  { title: 'Level 3: Keys & Locked Doors', raw: level3Raw },
-  { title: 'Level 4: Switches & Gates', raw: level4Raw },
-  { title: 'Level 5: Chasms & Holes', raw: level5Raw },
-  { title: 'Level 6: Deadly Spikes', raw: level6Raw },
-  { title: 'Level 7: Rolling Boulders', raw: level7Raw },
-  { title: 'Level 8: Patrolling Beasts', raw: level8Raw },
-  { title: "Level 9: Explorer's Tools", raw: level9Raw },
-];
+import {
+  LEVELS_MANIFEST,
+  LevelManifestEntry,
+  ZONE_THEMES,
+  getLevelEntry,
+  getNextLevelEntry,
+} from '../levels/manifest';
+import { SaveService } from '../services/SaveService';
 
 export class GameScene extends Phaser.Scene {
-  private currentLevelIndex: number = 0;
+  private currentLevelEntry!: LevelManifestEntry;
   private session!: GameSession;
   private currentLevelData!: LevelData;
   private tileSize: number = 48;
@@ -38,6 +20,9 @@ export class GameScene extends Phaser.Scene {
   private isAnimating: boolean = false;
   private touchStartX: number = 0;
   private touchStartY: number = 0;
+
+  // Background
+  private bgGfx!: Phaser.GameObjects.Graphics;
 
   // Visual game objects
   private tileContainer!: Phaser.GameObjects.Container;
@@ -75,16 +60,21 @@ export class GameScene extends Phaser.Scene {
     super({ key: 'GameScene' });
   }
 
-  create(): void {
-    this.loadLevel(this.currentLevelIndex);
+  init(data?: { levelId?: string }): void {
+    const id = data?.levelId || 'level1';
+    this.currentLevelEntry = getLevelEntry(id) || LEVELS_MANIFEST[0];
+  }
 
-    // Background
-    const bg = this.add.graphics();
-    bg.fillGradientStyle(0x0f172a, 0x0f172a, 0x070b14, 0x070b14, 1);
-    bg.fillRect(0, 0, this.scale.width, this.scale.height);
+  create(): void {
+    // Dynamic Zone Background
+    this.bgGfx = this.add.graphics();
+    this.updateBackground();
 
     // Containers
     this.tileContainer = this.add.container(0, 0);
+
+    // Load initial level
+    this.loadLevel(this.currentLevelEntry);
 
     // Build the grid and level visuals
     this.renderInitialBoard();
@@ -99,12 +89,29 @@ export class GameScene extends Phaser.Scene {
     this.updateHUD();
   }
 
-  private loadLevel(index: number): void {
-    this.currentLevelIndex = index;
-    const entry = LEVELS[this.currentLevelIndex];
+  public restartLevel(): void {
+    this.handleRestart();
+  }
+
+  private updateBackground(): void {
+    const zone = ZONE_THEMES[this.currentLevelEntry.zone];
+    this.bgGfx.clear();
+    this.bgGfx.fillGradientStyle(
+      zone.bgGradientTop,
+      zone.bgGradientTop,
+      zone.bgGradientBottom,
+      zone.bgGradientBottom,
+      1
+    );
+    this.bgGfx.fillRect(0, 0, this.scale.width, this.scale.height);
+  }
+
+  private loadLevel(entry: LevelManifestEntry): void {
+    this.currentLevelEntry = entry;
     this.currentLevelData = parseAsciiLevel(entry.raw);
     this.session = new GameSession(this.currentLevelData);
     this.computeLayout();
+    this.updateBackground();
   }
 
   private computeLayout(): void {
@@ -145,6 +152,7 @@ export class GameScene extends Phaser.Scene {
     this.fireObjects.clear();
 
     const state = this.session.getState();
+    const zone = ZONE_THEMES[this.currentLevelEntry.zone];
 
     // Floor and Walls
     for (let y = 0; y < state.height; y++) {
@@ -157,20 +165,20 @@ export class GameScene extends Phaser.Scene {
         const tileGfx = this.add.graphics();
 
         if (tile === 'wall') {
-          tileGfx.fillStyle(0x334155, 1);
+          tileGfx.fillStyle(zone.wallFill, 1);
           tileGfx.fillRoundedRect(px + 1, py + 1, this.tileSize - 2, this.tileSize - 2, 4);
-          tileGfx.lineStyle(2, 0x475569, 1);
+          tileGfx.lineStyle(2, zone.wallBorder, 0.7);
           tileGfx.strokeRoundedRect(px + 2, py + 2, this.tileSize - 4, this.tileSize - 4, 3);
 
-          tileGfx.fillStyle(0x1e293b, 0.6);
+          tileGfx.fillStyle(0x0f172a, 0.4);
           tileGfx.fillRect(px + 4, py + this.tileSize - 6, this.tileSize - 8, 4);
         } else {
-          tileGfx.fillStyle(0x1e293b, 1);
+          tileGfx.fillStyle(zone.floorFill, 1);
           tileGfx.fillRect(px, py, this.tileSize, this.tileSize);
           tileGfx.lineStyle(1, 0x0f172a, 0.8);
           tileGfx.strokeRect(px, py, this.tileSize, this.tileSize);
 
-          tileGfx.fillStyle(0x334155, 0.4);
+          tileGfx.fillStyle(zone.floorDot, 0.5);
           tileGfx.fillCircle(px + this.tileSize / 2, py + this.tileSize / 2, 2);
         }
 
@@ -1008,7 +1016,7 @@ export class GameScene extends Phaser.Scene {
     hudBg.strokeRoundedRect(12, 10, width - 24, 88, 12);
 
     // Level Title
-    this.levelTitleText = this.add.text(24, 20, LEVELS[this.currentLevelIndex].title, {
+    this.levelTitleText = this.add.text(24, 20, `Level ${this.currentLevelEntry.number}: ${this.currentLevelEntry.title}`, {
       fontFamily: 'system-ui, -apple-system, sans-serif',
       fontSize: '15px',
       color: '#fcd34d',
@@ -1062,21 +1070,23 @@ export class GameScene extends Phaser.Scene {
       color: '#9ca3af',
     });
 
-    // Level Switch Button
-    const lvlBtn = this.add.container(width - 235, 54);
-    const lvlBg = this.add.graphics();
-    lvlBg.fillStyle(0x1f2937, 1);
-    lvlBg.fillRoundedRect(-30, -16, 60, 32, 6);
-    const lvlText = this.add.text(0, 0, 'Levels', {
+    // Pause Button
+    const pauseBtn = this.add.container(width - 235, 54);
+    const pauseBg = this.add.graphics();
+    pauseBg.fillStyle(0x1e293b, 1);
+    pauseBg.fillRoundedRect(-30, -16, 60, 32, 6);
+    pauseBg.lineStyle(1, 0x475569, 0.8);
+    pauseBg.strokeRoundedRect(-30, -16, 60, 32, 6);
+    const pauseText = this.add.text(0, 0, '⏸ Pause', {
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      fontSize: '12px',
+      fontSize: '11px',
       color: '#93c5fd',
       fontStyle: 'bold',
     }).setOrigin(0.5);
-    lvlBtn.add([lvlBg, lvlText]);
-    lvlBtn.setSize(60, 32);
-    lvlBtn.setInteractive({ useHandCursor: true });
-    lvlBtn.on('pointerdown', () => this.cycleLevel());
+    pauseBtn.add([pauseBg, pauseText]);
+    pauseBtn.setSize(60, 32);
+    pauseBtn.setInteractive({ useHandCursor: true });
+    pauseBtn.on('pointerdown', () => this.handlePause());
 
     // Undo Button
     const undoBtn = this.add.container(width - 145, 54);
@@ -1111,13 +1121,13 @@ export class GameScene extends Phaser.Scene {
     restartBtn.on('pointerdown', () => this.handleRestart());
   }
 
-  private cycleLevel(): void {
+  private handlePause(): void {
     if (this.isAnimating) return;
-    const nextIndex = (this.currentLevelIndex + 1) % LEVELS.length;
-    this.switchLevel(nextIndex);
+    this.scene.pause();
+    this.scene.launch('PauseScene', { levelId: this.currentLevelEntry.id });
   }
 
-  private switchLevel(index: number): void {
+  private switchLevel(entry: LevelManifestEntry): void {
     if (this.winModalContainer) {
       this.winModalContainer.destroy();
       this.winModalContainer = undefined;
@@ -1126,14 +1136,14 @@ export class GameScene extends Phaser.Scene {
       this.loseModalContainer.destroy();
       this.loseModalContainer = undefined;
     }
-    this.loadLevel(index);
+    this.loadLevel(entry);
     this.renderInitialBoard();
     this.updateHUD();
   }
 
   private updateHUD(): void {
     const state = this.session.getState();
-    this.levelTitleText.setText(LEVELS[this.currentLevelIndex].title);
+    this.levelTitleText.setText(`Level ${this.currentLevelEntry.number}: ${this.currentLevelEntry.title}`);
     this.diamondsText.setText(`💎 ${state.collectedDiamonds} / ${state.totalDiamonds}`);
     this.keysText.setText(`🔑 ${state.keys}`);
     this.bootsText.setAlpha(state.hasSpikeBoots ? 1.0 : 0.25);
@@ -1164,8 +1174,8 @@ export class GameScene extends Phaser.Scene {
           this.handleUndo();
         } else if (key === 'r') {
           this.handleRestart();
-        } else if (key === 'l' || key === 'n') {
-          this.cycleLevel();
+        } else if (key === 'escape' || key === 'p') {
+          this.handlePause();
         }
       });
     }
@@ -1561,80 +1571,129 @@ export class GameScene extends Phaser.Scene {
     const width = this.scale.width;
     const height = this.scale.height;
     const state = this.session.getState();
-    const hasNextLevel = this.currentLevelIndex + 1 < LEVELS.length;
+    const nextEntry = getNextLevelEntry(this.currentLevelEntry.id);
+
+    // Save completion and compute stars
+    const result = SaveService.recordLevelCompletion(
+      this.currentLevelEntry.id,
+      state.moveCount,
+      this.currentLevelEntry.thresholds,
+      nextEntry?.id
+    );
+
+    const savedProgress = SaveService.getLevelProgress(this.currentLevelEntry.id);
 
     this.winModalContainer = this.add.container(width / 2, height / 2);
 
     const backdrop = this.add.graphics();
-    backdrop.fillStyle(0x000000, 0.75);
+    backdrop.fillStyle(0x020617, 0.82);
     backdrop.fillRect(-width / 2, -height / 2, width, height);
 
+    const cardW = 340;
+    const cardH = 390;
     const card = this.add.graphics();
-    card.fillStyle(0x1e293b, 1);
-    card.fillRoundedRect(-180, -150, 360, 300, 16);
-    card.lineStyle(3, 0xf59e0b, 1);
-    card.strokeRoundedRect(-180, -150, 360, 300, 16);
+    card.fillStyle(0x0f172a, 1);
+    card.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 16);
+    card.lineStyle(2, 0xfbbf24, 0.9);
+    card.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 16);
 
-    const titleText = this.add.text(0, -105, '🏆 LEVEL COMPLETE! 🏆', {
+    const titleText = this.add.text(0, -cardH / 2 + 35, '🏆 LEVEL COMPLETE! 🏆', {
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      fontSize: '22px',
+      fontSize: '20px',
       color: '#fcd34d',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    const diamondsInfo = this.add.text(0, -60, `Diamonds: 💎 ${state.collectedDiamonds} / ${state.totalDiamonds}`, {
+    // 3 Stars Presentation
+    const starsContainer = this.add.container(0, -cardH / 2 + 82);
+    for (let s = 1; s <= 3; s++) {
+      const earned = s <= result.stars;
+      const star = this.add.text((s - 2) * 36, 0, earned ? '★' : '☆', {
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        fontSize: '32px',
+        color: earned ? '#fbbf24' : '#334155',
+        fontStyle: 'bold',
+      }).setOrigin(0.5);
+      starsContainer.add(star);
+    }
+
+    // Moves and stats
+    const movesText = this.add.text(0, -cardH / 2 + 130, `Moves: ${state.moveCount} (3★ Goal: ≤${this.currentLevelEntry.thresholds.threeStars})`, {
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      fontSize: '16px',
-      color: '#38bdf8',
+      fontSize: '13px',
+      color: '#f8fafc',
     }).setOrigin(0.5);
 
-    const movesInfo = this.add.text(0, -30, `Moves Taken: ${state.moveCount}`, {
+    const recordLabel = result.newBest ? '🎉 NEW BEST RECORD!' : `Best Record: ${savedProgress.bestMoves} moves`;
+    const recordText = this.add.text(0, -cardH / 2 + 155, recordLabel, {
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      fontSize: '16px',
-      color: '#e2e8f0',
-    }).setOrigin(0.5);
-
-    const actionBtn = this.add.container(0, 35);
-    const btnBg = this.add.graphics();
-    btnBg.fillStyle(0x10b981, 1);
-    btnBg.fillRoundedRect(-95, -22, 190, 44, 10);
-    btnBg.lineStyle(2, 0x34d399, 1);
-    btnBg.strokeRoundedRect(-95, -22, 190, 44, 10);
-
-    const actionTextStr = hasNextLevel ? 'Next Level ➔' : 'Play Again';
-    const btnText = this.add.text(0, 0, actionTextStr, {
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-      fontSize: '18px',
-      color: '#ffffff',
+      fontSize: '12px',
+      color: result.newBest ? '#34d399' : '#94a3b8',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    actionBtn.add([btnBg, btnText]);
-    actionBtn.setSize(190, 44);
-    actionBtn.setInteractive({ useHandCursor: true });
-    actionBtn.on('pointerdown', () => {
-      if (hasNextLevel) {
-        this.switchLevel(this.currentLevelIndex + 1);
-      } else {
-        this.handleRestart();
-      }
-    });
+    this.winModalContainer.add([backdrop, card, titleText, starsContainer, movesText, recordText]);
 
-    const replayBtn = this.add.container(0, 95);
+    let btnY = -cardH / 2 + 205;
+
+    // Next Level Button (if next level exists)
+    if (nextEntry) {
+      const nextBtn = this.add.container(0, btnY);
+      const nextBg = this.add.graphics();
+      nextBg.fillStyle(0x10b981, 1);
+      nextBg.fillRoundedRect(-100, -20, 200, 40, 10);
+      const nextText = this.add.text(0, 0, '▶  Next Level', {
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        fontSize: '16px',
+        color: '#ffffff',
+        fontStyle: 'bold',
+      }).setOrigin(0.5);
+      nextBtn.add([nextBg, nextText]);
+      nextBtn.setSize(200, 40);
+      nextBtn.setInteractive({ useHandCursor: true });
+      nextBtn.on('pointerdown', () => this.switchLevel(nextEntry));
+      this.winModalContainer.add(nextBtn);
+      btnY += 52;
+    }
+
+    // Replay Button
+    const replayBtn = this.add.container(0, btnY);
     const replayBg = this.add.graphics();
-    replayBg.fillStyle(0x374151, 1);
-    replayBg.fillRoundedRect(-70, -16, 140, 32, 8);
-    const replayText = this.add.text(0, 0, 'Replay Level', {
+    replayBg.fillStyle(0x334155, 1);
+    replayBg.fillRoundedRect(-100, -18, 200, 36, 8);
+    const replayText = this.add.text(0, 0, '↻  Replay Level', {
       fontFamily: 'system-ui, -apple-system, sans-serif',
       fontSize: '14px',
-      color: '#94a3b8',
+      color: '#cbd5e1',
+      fontStyle: 'bold',
     }).setOrigin(0.5);
     replayBtn.add([replayBg, replayText]);
-    replayBtn.setSize(140, 32);
+    replayBtn.setSize(200, 36);
     replayBtn.setInteractive({ useHandCursor: true });
     replayBtn.on('pointerdown', () => this.handleRestart());
+    this.winModalContainer.add(replayBtn);
+    btnY += 46;
 
-    this.winModalContainer.add([backdrop, card, titleText, diamondsInfo, movesInfo, actionBtn, replayBtn]);
+    // Level Select Button
+    const selectBtn = this.add.container(0, btnY);
+    const selectBg = this.add.graphics();
+    selectBg.fillStyle(0x1e293b, 1);
+    selectBg.fillRoundedRect(-100, -18, 200, 36, 8);
+    selectBg.lineStyle(1, 0x475569, 0.8);
+    selectBg.strokeRoundedRect(-100, -18, 200, 36, 8);
+    const selectText = this.add.text(0, 0, '☰  Level Select', {
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontSize: '14px',
+      color: '#93c5fd',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    selectBtn.add([selectBg, selectText]);
+    selectBtn.setSize(200, 36);
+    selectBtn.setInteractive({ useHandCursor: true });
+    selectBtn.on('pointerdown', () => {
+      this.scene.start('LevelSelectScene');
+    });
+    this.winModalContainer.add(selectBtn);
 
     this.winModalContainer.setScale(0.8);
     this.winModalContainer.setAlpha(0);
@@ -1660,28 +1719,30 @@ export class GameScene extends Phaser.Scene {
     backdrop.fillStyle(0x450a0a, 0.85);
     backdrop.fillRect(-width / 2, -height / 2, width, height);
 
+    const cardW = 340;
+    const cardH = 310;
     const card = this.add.graphics();
     card.fillStyle(0x18181b, 1);
-    card.fillRoundedRect(-170, -130, 340, 260, 16);
+    card.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 16);
     card.lineStyle(3, 0xef4444, 1);
-    card.strokeRoundedRect(-170, -130, 340, 260, 16);
+    card.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 16);
 
-    const titleText = this.add.text(0, -85, '☠ DEFEAT! ☠', {
+    const titleText = this.add.text(0, -cardH / 2 + 35, '☠ DEFEAT! ☠', {
       fontFamily: 'system-ui, -apple-system, sans-serif',
       fontSize: '24px',
       color: '#ef4444',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    const reasonText = this.add.text(0, -45, 'Pierced by deadly spikes!\nFind spike boots or avoid them.', {
+    const reasonText = this.add.text(0, -cardH / 2 + 75, 'Expedition blocked by hazards!\nUndo your last step or try again.', {
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      fontSize: '14px',
+      fontSize: '13px',
       color: '#fca5a5',
       align: 'center',
     }).setOrigin(0.5);
 
     // Undo Button
-    const undoBtn = this.add.container(0, 20);
+    const undoBtn = this.add.container(0, -cardH / 2 + 130);
     const undoBg = this.add.graphics();
     undoBg.fillStyle(0x0284c7, 1);
     undoBg.fillRoundedRect(-85, -20, 170, 40, 10);
@@ -1690,7 +1751,7 @@ export class GameScene extends Phaser.Scene {
 
     const undoText = this.add.text(0, 0, '↶ Undo Move', {
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      fontSize: '16px',
+      fontSize: '15px',
       color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5);
@@ -1701,10 +1762,10 @@ export class GameScene extends Phaser.Scene {
     undoBtn.on('pointerdown', () => this.handleUndo());
 
     // Restart Button
-    const restartBtn = this.add.container(0, 75);
+    const restartBtn = this.add.container(0, -cardH / 2 + 185);
     const restartBg = this.add.graphics();
     restartBg.fillStyle(0x374151, 1);
-    restartBg.fillRoundedRect(-70, -16, 140, 32, 8);
+    restartBg.fillRoundedRect(-85, -18, 170, 36, 8);
     const restartText = this.add.text(0, 0, '↻ Restart', {
       fontFamily: 'system-ui, -apple-system, sans-serif',
       fontSize: '14px',
@@ -1713,11 +1774,32 @@ export class GameScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     restartBtn.add([restartBg, restartText]);
-    restartBtn.setSize(140, 32);
+    restartBtn.setSize(170, 36);
     restartBtn.setInteractive({ useHandCursor: true });
     restartBtn.on('pointerdown', () => this.handleRestart());
 
-    this.loseModalContainer.add([backdrop, card, titleText, reasonText, undoBtn, restartBtn]);
+    // Level Select Button
+    const selectBtn = this.add.container(0, -cardH / 2 + 235);
+    const selectBg = this.add.graphics();
+    selectBg.fillStyle(0x1e293b, 1);
+    selectBg.fillRoundedRect(-85, -18, 170, 36, 8);
+    selectBg.lineStyle(1, 0x475569, 0.8);
+    selectBg.strokeRoundedRect(-85, -18, 170, 36, 8);
+    const selectText = this.add.text(0, 0, '☰ Level Select', {
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontSize: '13px',
+      color: '#93c5fd',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    selectBtn.add([selectBg, selectText]);
+    selectBtn.setSize(170, 36);
+    selectBtn.setInteractive({ useHandCursor: true });
+    selectBtn.on('pointerdown', () => {
+      this.scene.start('LevelSelectScene');
+    });
+
+    this.loseModalContainer.add([backdrop, card, titleText, reasonText, undoBtn, restartBtn, selectBtn]);
 
     this.loseModalContainer.setScale(0.8);
     this.loseModalContainer.setAlpha(0);

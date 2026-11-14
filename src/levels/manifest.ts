@@ -1,0 +1,159 @@
+import { StarThresholds } from '../services/SaveService';
+import level1Raw from './level1.txt?raw';
+import level2Raw from './level2_block.txt?raw';
+import level3Raw from './level3_key_door.txt?raw';
+import level4Raw from './level4_switch_gate.txt?raw';
+import level5Raw from './level5_hole.txt?raw';
+import level6Raw from './level6_spikes.txt?raw';
+import level7Raw from './level7_boulder.txt?raw';
+import level8Raw from './level8_enemy.txt?raw';
+import level9Raw from './level9_tools.txt?raw';
+
+export type ZoneThemeId = 'temple' | 'cave' | 'volcano';
+
+export interface ZoneTheme {
+  id: ZoneThemeId;
+  name: string;
+  bgGradientTop: number;
+  bgGradientBottom: number;
+  wallFill: number;
+  wallBorder: number;
+  floorFill: number;
+  floorDot: number;
+  accentColor: string;
+}
+
+export const ZONE_THEMES: Record<ZoneThemeId, ZoneTheme> = {
+  temple: {
+    id: 'temple',
+    name: 'Ancient Temple',
+    bgGradientTop: 0x0f172a,
+    bgGradientBottom: 0x064e3b,
+    wallFill: 0x1e293b,
+    wallBorder: 0x10b981,
+    floorFill: 0x0f172a,
+    floorDot: 0x047857,
+    accentColor: '#10b981',
+  },
+  cave: {
+    id: 'cave',
+    name: 'Crystal Cavern',
+    bgGradientTop: 0x0f172a,
+    bgGradientBottom: 0x082f49,
+    wallFill: 0x1e293b,
+    wallBorder: 0x0284c7,
+    floorFill: 0x0b1329,
+    floorDot: 0x38bdf8,
+    accentColor: '#38bdf8',
+  },
+  volcano: {
+    id: 'volcano',
+    name: 'Magma Core',
+    bgGradientTop: 0x18181b,
+    bgGradientBottom: 0x450a0a,
+    wallFill: 0x27272a,
+    wallBorder: 0xd97706,
+    floorFill: 0x18181b,
+    floorDot: 0xef4444,
+    accentColor: '#f97316',
+  },
+};
+
+export interface LevelManifestEntry {
+  id: string;
+  number: number;
+  title: string;
+  zone: ZoneThemeId;
+  raw: string;
+  thresholds: StarThresholds;
+}
+
+export const LEVELS_MANIFEST: LevelManifestEntry[] = [
+  {
+    id: 'level1',
+    number: 1,
+    title: 'The Descent',
+    zone: 'temple',
+    raw: level1Raw,
+    thresholds: { threeStars: 9, twoStars: 13 },
+  },
+  {
+    id: 'level2',
+    number: 2,
+    title: 'Pushable Blocks',
+    zone: 'temple',
+    raw: level2Raw,
+    thresholds: { threeStars: 5, twoStars: 8 },
+  },
+  {
+    id: 'level3',
+    number: 3,
+    title: 'Keys & Locked Doors',
+    zone: 'temple',
+    raw: level3Raw,
+    thresholds: { threeStars: 10, twoStars: 14 },
+  },
+  {
+    id: 'level4',
+    number: 4,
+    title: 'Switches & Gates',
+    zone: 'cave',
+    raw: level4Raw,
+    thresholds: { threeStars: 10, twoStars: 14 },
+  },
+  {
+    id: 'level5',
+    number: 5,
+    title: 'Chasms & Holes',
+    zone: 'cave',
+    raw: level5Raw,
+    thresholds: { threeStars: 10, twoStars: 14 },
+  },
+  {
+    id: 'level6',
+    number: 6,
+    title: 'Deadly Spikes',
+    zone: 'cave',
+    raw: level6Raw,
+    thresholds: { threeStars: 12, twoStars: 16 },
+  },
+  {
+    id: 'level7',
+    number: 7,
+    title: 'Rolling Boulders',
+    zone: 'volcano',
+    raw: level7Raw,
+    thresholds: { threeStars: 8, twoStars: 12 },
+  },
+  {
+    id: 'level8',
+    number: 8,
+    title: 'Patrolling Beasts',
+    zone: 'volcano',
+    raw: level8Raw,
+    thresholds: { threeStars: 9, twoStars: 13 },
+  },
+  {
+    id: 'level9',
+    number: 9,
+    title: "Explorer's Tools",
+    zone: 'volcano',
+    raw: level9Raw,
+    thresholds: { threeStars: 15, twoStars: 20 },
+  },
+];
+
+export function getLevelEntry(idOrIndex: string | number): LevelManifestEntry | undefined {
+  if (typeof idOrIndex === 'number') {
+    return LEVELS_MANIFEST[idOrIndex];
+  }
+  return LEVELS_MANIFEST.find(l => l.id === idOrIndex);
+}
+
+export function getNextLevelEntry(currentId: string): LevelManifestEntry | undefined {
+  const currentIndex = LEVELS_MANIFEST.findIndex(l => l.id === currentId);
+  if (currentIndex >= 0 && currentIndex < LEVELS_MANIFEST.length - 1) {
+    return LEVELS_MANIFEST[currentIndex + 1];
+  }
+  return undefined;
+}

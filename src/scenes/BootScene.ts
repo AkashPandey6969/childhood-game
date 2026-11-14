@@ -83,7 +83,7 @@ export class BootScene extends Phaser.Scene {
     startBtn.setInteractive({ useHandCursor: true });
 
     const startGame = () => {
-      this.scene.start('GameScene');
+      this.scene.start('MainMenuScene');
     };
 
     startBtn.on('pointerdown', startGame);
