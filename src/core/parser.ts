@@ -51,6 +51,12 @@ export function parseAsciiLevel(ascii: string): LevelData {
         case 'B':
           row.push('block');
           break;
+        case 'k':
+          row.push('key');
+          break;
+        case 'D':
+          row.push('door');
+          break;
         default:
           throw new Error(`Unrecognized map character '${char}' at row ${y + 1}, column ${x + 1}`);
       }
@@ -86,6 +92,7 @@ export function createInitialState(level: LevelData): GameState {
     player: { ...level.playerStart },
     collectedDiamonds: 0,
     totalDiamonds: level.totalDiamonds,
+    keys: 0,
     moveCount: 0,
     status: 'playing',
   };

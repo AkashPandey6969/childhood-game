@@ -3,7 +3,9 @@ export type TileType =
   | 'floor'    // .
   | 'exit'     // E
   | 'diamond'  // *
-  | 'block';   // B
+  | 'block'    // B
+  | 'key'      // k
+  | 'door';    // D
 
 export type Direction = 'up' | 'down' | 'left' | 'right';
 
@@ -30,6 +32,7 @@ export interface GameState {
   readonly player: Readonly<Position>;
   readonly collectedDiamonds: number;
   readonly totalDiamonds: number;
+  readonly keys: number;
   readonly moveCount: number;
   readonly status: GameStatus;
 }

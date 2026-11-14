@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GameSession, parseAsciiLevel, Direction, LevelData } from '../core';
 import level1Raw from '../levels/level1.txt?raw';
 import level2Raw from '../levels/level2_block.txt?raw';
+import level3Raw from '../levels/level3_key_door.txt?raw';
 
 interface LevelEntry {
   title: string;
@@ -11,6 +12,7 @@ interface LevelEntry {
 const LEVELS: LevelEntry[] = [
   { title: 'Level 1: The Descent', raw: level1Raw },
   { title: 'Level 2: Pushable Blocks', raw: level2Raw },
+  { title: 'Level 3: Keys & Locked Doors', raw: level3Raw },
 ];
 
 export class GameScene extends Phaser.Scene {
@@ -30,12 +32,15 @@ export class GameScene extends Phaser.Scene {
   private playerObject!: Phaser.GameObjects.Container;
   private diamondObjects: Map<string, Phaser.GameObjects.Graphics> = new Map();
   private blockObjects: Map<string, Phaser.GameObjects.Container> = new Map();
+  private keyObjects: Map<string, Phaser.GameObjects.Graphics> = new Map();
+  private doorObjects: Map<string, Phaser.GameObjects.Container> = new Map();
   private exitObject!: Phaser.GameObjects.Container;
   private exitGlow!: Phaser.GameObjects.Graphics;
 
   // HUD elements
   private levelTitleText!: Phaser.GameObjects.Text;
   private diamondsText!: Phaser.GameObjects.Text;
+  private keysText!: Phaser.GameObjects.Text;
   private movesText!: Phaser.GameObjects.Text;
   private undoButtonText!: Phaser.GameObjects.Text;
   private winModalContainer?: Phaser.GameObjects.Container;
@@ -100,6 +105,8 @@ export class GameScene extends Phaser.Scene {
     this.tileContainer.removeAll(true);
     this.diamondObjects.clear();
     this.blockObjects.clear();
+    this.keyObjects.clear();
+    this.doorObjects.clear();
 
     const state = this.session.getState();
 
@@ -152,6 +159,18 @@ export class GameScene extends Phaser.Scene {
           const blockObj = this.renderBlock(x, y);
           this.blockObjects.set(`${x},${y}`, blockObj);
         }
+
+        // Keys
+        if (tile === 'key') {
+          const keyGfx = this.renderKey(x, y);
+          this.keyObjects.set(`${x},${y}`, keyGfx);
+        }
+
+        // Doors
+        if (tile === 'door') {
+          const doorObj = this.renderDoor(x, y);
+          this.doorObjects.set(`${x},${y}`, doorObj);
+        }
       }
     }
 
@@ -164,11 +183,9 @@ export class GameScene extends Phaser.Scene {
     const gfx = this.add.graphics();
     const size = this.tileSize * 0.32;
 
-    // Diamond outer glow
     gfx.fillStyle(0x00f0ff, 0.3);
     gfx.fillCircle(px, py, size * 1.5);
 
-    // Diamond polygon
     gfx.fillStyle(0x00f0ff, 1);
     gfx.beginPath();
     gfx.moveTo(px, py - size);
@@ -178,7 +195,6 @@ export class GameScene extends Phaser.Scene {
     gfx.closePath();
     gfx.fillPath();
 
-    // Diamond inner facet highlight
     gfx.fillStyle(0xffffff, 0.8);
     gfx.beginPath();
     gfx.moveTo(px, py - size * 0.75);
@@ -190,7 +206,6 @@ export class GameScene extends Phaser.Scene {
 
     this.tileContainer.add(gfx);
 
-    // Sparkle pulse tween
     this.tweens.add({
       targets: gfx,
       scaleX: 1.1,
@@ -204,21 +219,100 @@ export class GameScene extends Phaser.Scene {
     return gfx;
   }
 
+  private renderKey(x: number, y: number): Phaser.GameObjects.Graphics {
+    const { x: px, y: py } = this.tileToPixel(x, y);
+    const gfx = this.add.graphics();
+    const r = this.tileSize * 0.16;
+
+    // Outer glow
+    gfx.fillStyle(0xfbbf24, 0.3);
+    gfx.fillCircle(px, py, r * 2.2);
+
+    // Key Bow (Ring)
+    gfx.lineStyle(3, 0xf59e0b, 1);
+    gfx.strokeCircle(px - r * 0.8, py, r);
+    gfx.lineStyle(2, 0xfde047, 1);
+    gfx.strokeCircle(px - r * 0.8, py, r);
+
+    // Key Shaft
+    gfx.fillStyle(0xf59e0b, 1);
+    gfx.fillRect(px, py - 2.5, r * 1.8, 5);
+
+    // Key Bit / Teeth
+    gfx.fillRect(px + r * 1.1, py + 2.5, 4, r * 0.8);
+    gfx.fillRect(px + r * 1.5, py + 2.5, 4, r * 0.6);
+
+    this.tileContainer.add(gfx);
+
+    // Hover tween
+    this.tweens.add({
+      targets: gfx,
+      y: py - 3,
+      duration: 600,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    return gfx;
+  }
+
+  private renderDoor(x: number, y: number): Phaser.GameObjects.Container {
+    const { x: px, y: py } = this.tileToPixel(x, y);
+    const container = this.add.container(px, py);
+    const w = this.tileSize * 0.82;
+    const h = this.tileSize * 0.88;
+
+    const doorGfx = this.add.graphics();
+
+    // Dark iron/stone door base
+    doorGfx.fillStyle(0x475569, 1);
+    doorGfx.fillRoundedRect(-w / 2, -h / 2, w, h, 4);
+
+    // Iron border
+    doorGfx.lineStyle(2, 0x1e293b, 1);
+    doorGfx.strokeRoundedRect(-w / 2, -h / 2, w, h, 4);
+
+    // Horizontal reinforcement iron bands
+    doorGfx.fillStyle(0x334155, 1);
+    doorGfx.fillRect(-w / 2, -h / 3, w, 5);
+    doorGfx.fillRect(-w / 2, h / 3 - 5, w, 5);
+
+    // Brass keyhole plate
+    doorGfx.fillStyle(0xd97706, 1);
+    doorGfx.fillCircle(0, 0, w * 0.2);
+    doorGfx.lineStyle(1.5, 0xfde047, 1);
+    doorGfx.strokeCircle(0, 0, w * 0.2);
+
+    // Keyhole
+    doorGfx.fillStyle(0x0f172a, 1);
+    doorGfx.fillCircle(0, -2, 3);
+    doorGfx.beginPath();
+    doorGfx.moveTo(-2, -2);
+    doorGfx.lineTo(2, -2);
+    doorGfx.lineTo(3, 4);
+    doorGfx.lineTo(-3, 4);
+    doorGfx.closePath();
+    doorGfx.fillPath();
+
+    container.add(doorGfx);
+    this.tileContainer.add(container);
+
+    return container;
+  }
+
   private renderBlock(x: number, y: number): Phaser.GameObjects.Container {
     const { x: px, y: py } = this.tileToPixel(x, y);
     const container = this.add.container(px, py);
     const size = this.tileSize * 0.85;
 
     const blockGfx = this.add.graphics();
-    // Wooden crate base
     blockGfx.fillStyle(0xb45309, 1);
     blockGfx.fillRoundedRect(-size / 2, -size / 2, size, size, 4);
 
-    // Darker wooden border
     blockGfx.lineStyle(2, 0x78350f, 1);
     blockGfx.strokeRoundedRect(-size / 2, -size / 2, size, size, 4);
 
-    // Cross wooden planks / braces (X)
     blockGfx.lineStyle(2, 0x92400e, 0.8);
     blockGfx.beginPath();
     blockGfx.moveTo(-size / 2 + 4, -size / 2 + 4);
@@ -227,22 +321,17 @@ export class GameScene extends Phaser.Scene {
     blockGfx.lineTo(-size / 2 + 4, size / 2 - 4);
     blockGfx.strokePath();
 
-    // Gold/brass corner brackets
     blockGfx.fillStyle(0xf59e0b, 1);
     const cornerSize = size * 0.2;
     blockGfx.fillRect(-size / 2, -size / 2, cornerSize, 3);
     blockGfx.fillRect(-size / 2, -size / 2, 3, cornerSize);
-
     blockGfx.fillRect(size / 2 - cornerSize, -size / 2, cornerSize, 3);
     blockGfx.fillRect(size / 2 - 3, -size / 2, 3, cornerSize);
-
     blockGfx.fillRect(-size / 2, size / 2 - 3, cornerSize, 3);
     blockGfx.fillRect(-size / 2, size / 2 - cornerSize, 3, cornerSize);
-
     blockGfx.fillRect(size / 2 - cornerSize, size / 2 - 3, cornerSize, 3);
     blockGfx.fillRect(size / 2 - 3, size / 2 - cornerSize, 3, cornerSize);
 
-    // Center brass emblem
     blockGfx.fillStyle(0xfde047, 1);
     blockGfx.fillCircle(0, 0, size * 0.12);
 
@@ -289,13 +378,11 @@ export class GameScene extends Phaser.Scene {
     const isUnlocked = state.collectedDiamonds === state.totalDiamonds;
 
     if (isUnlocked) {
-      // Unlocked: radiant golden glow
       this.exitGlow.fillStyle(0x10b981, 0.4);
       this.exitGlow.fillCircle(0, 0, this.tileSize * 0.55);
       this.exitGlow.fillStyle(0xf59e0b, 0.3);
       this.exitGlow.fillCircle(0, 0, this.tileSize * 0.7);
     } else {
-      // Locked: dim red indicator
       this.exitGlow.fillStyle(0x991b1b, 0.2);
       this.exitGlow.fillCircle(0, 0, this.tileSize * 0.45);
     }
@@ -314,19 +401,15 @@ export class GameScene extends Phaser.Scene {
     const body = this.add.graphics();
     const radius = this.tileSize * 0.36;
 
-    // Outer glow
     body.fillStyle(0xf59e0b, 0.3);
     body.fillCircle(0, 0, radius + 4);
 
-    // Adventurer token circle
     body.fillStyle(0xf59e0b, 1);
     body.fillCircle(0, 0, radius);
 
-    // Explorer hat / visor
     body.fillStyle(0x78350f, 1);
     body.fillRoundedRect(-radius * 0.8, -radius * 0.8, radius * 1.6, radius * 0.7, 3);
 
-    // Eyes
     body.fillStyle(0xffffff, 1);
     body.fillCircle(-radius * 0.3, -radius * 0.05, 3);
     body.fillCircle(radius * 0.3, -radius * 0.05, 3);
@@ -341,7 +424,6 @@ export class GameScene extends Phaser.Scene {
   private createHUD(): void {
     const width = this.scale.width;
 
-    // Top Header background panel
     const hudBg = this.add.graphics();
     hudBg.fillStyle(0x111827, 0.95);
     hudBg.fillRoundedRect(12, 10, width - 24, 88, 12);
@@ -359,8 +441,16 @@ export class GameScene extends Phaser.Scene {
     // Diamonds count
     this.diamondsText = this.add.text(24, 42, '💎 0 / 0', {
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      fontSize: '18px',
+      fontSize: '17px',
       color: '#38bdf8',
+      fontStyle: 'bold',
+    });
+
+    // Keys count
+    this.keysText = this.add.text(125, 42, '🔑 0', {
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontSize: '17px',
+      color: '#fbbf24',
       fontStyle: 'bold',
     });
 
@@ -440,9 +530,9 @@ export class GameScene extends Phaser.Scene {
     const state = this.session.getState();
     this.levelTitleText.setText(LEVELS[this.currentLevelIndex].title);
     this.diamondsText.setText(`💎 ${state.collectedDiamonds} / ${state.totalDiamonds}`);
+    this.keysText.setText(`🔑 ${state.keys}`);
     this.movesText.setText(`Moves: ${state.moveCount}`);
 
-    // Dim undo button if cannot undo
     const canUndo = this.session.canUndo();
     this.undoButtonText.setAlpha(canUndo ? 1.0 : 0.4);
 
@@ -450,7 +540,6 @@ export class GameScene extends Phaser.Scene {
   }
 
   private setupInputHandlers(): void {
-    // Keyboard input
     if (this.input.keyboard) {
       this.input.keyboard.on('keydown', (event: KeyboardEvent) => {
         const key = event.key.toLowerCase();
@@ -472,7 +561,6 @@ export class GameScene extends Phaser.Scene {
       });
     }
 
-    // Touch / Mouse Swipe detection
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       this.touchStartX = pointer.x;
       this.touchStartY = pointer.y;
@@ -499,7 +587,6 @@ export class GameScene extends Phaser.Scene {
     const prevState = this.session.getState();
     if (prevState.status !== 'playing') return;
 
-    // Determine target coordinate
     const delta = {
       up: { x: 0, y: -1 },
       down: { x: 0, y: 1 },
@@ -518,7 +605,6 @@ export class GameScene extends Phaser.Scene {
 
     const moveSuccessful = this.session.move(direction);
     if (!moveSuccessful) {
-      // Subtle bump animation when blocked
       this.tweens.add({
         targets: this.playerObject,
         x: this.playerObject.x + delta.x * 4,
@@ -535,10 +621,9 @@ export class GameScene extends Phaser.Scene {
 
     this.isAnimating = true;
 
-    // Check if diamond was collected
+    // Diamond collection animation
     const diamondKey = `${nextState.player.x},${nextState.player.y}`;
     const collectedDiamondGfx = this.diamondObjects.get(diamondKey);
-
     if (collectedDiamondGfx) {
       this.tweens.add({
         targets: collectedDiamondGfx,
@@ -553,7 +638,41 @@ export class GameScene extends Phaser.Scene {
       });
     }
 
-    // Animate pushed block if applicable
+    // Key collection animation
+    const keyKey = `${nextState.player.x},${nextState.player.y}`;
+    const collectedKeyGfx = this.keyObjects.get(keyKey);
+    if (collectedKeyGfx) {
+      this.tweens.add({
+        targets: collectedKeyGfx,
+        scaleX: 1.6,
+        scaleY: 1.6,
+        alpha: 0,
+        duration: 120,
+        onComplete: () => {
+          collectedKeyGfx.destroy();
+          this.keyObjects.delete(keyKey);
+        },
+      });
+    }
+
+    // Door unlock animation
+    const doorKey = `${nextState.player.x},${nextState.player.y}`;
+    const unlockedDoorContainer = this.doorObjects.get(doorKey);
+    if (unlockedDoorContainer) {
+      this.tweens.add({
+        targets: unlockedDoorContainer,
+        scaleX: 0.1,
+        scaleY: 0.1,
+        alpha: 0,
+        duration: 130,
+        onComplete: () => {
+          unlockedDoorContainer.destroy();
+          this.doorObjects.delete(doorKey);
+        },
+      });
+    }
+
+    // Block push animation
     if (isPushedBlock) {
       const beyondX = targetX + delta.x;
       const beyondY = targetY + delta.y;
@@ -629,19 +748,16 @@ export class GameScene extends Phaser.Scene {
 
     this.winModalContainer = this.add.container(width / 2, height / 2);
 
-    // Dim background overlay
     const backdrop = this.add.graphics();
     backdrop.fillStyle(0x000000, 0.75);
     backdrop.fillRect(-width / 2, -height / 2, width, height);
 
-    // Dialog card
     const card = this.add.graphics();
     card.fillStyle(0x1e293b, 1);
     card.fillRoundedRect(-180, -150, 360, 300, 16);
     card.lineStyle(3, 0xf59e0b, 1);
     card.strokeRoundedRect(-180, -150, 360, 300, 16);
 
-    // Title
     const titleText = this.add.text(0, -105, '🏆 LEVEL COMPLETE! 🏆', {
       fontFamily: 'system-ui, -apple-system, sans-serif',
       fontSize: '22px',
@@ -661,7 +777,6 @@ export class GameScene extends Phaser.Scene {
       color: '#e2e8f0',
     }).setOrigin(0.5);
 
-    // Action button(s)
     const actionBtn = this.add.container(0, 35);
     const btnBg = this.add.graphics();
     btnBg.fillStyle(0x10b981, 1);
@@ -688,7 +803,6 @@ export class GameScene extends Phaser.Scene {
       }
     });
 
-    // Replay current button
     const replayBtn = this.add.container(0, 95);
     const replayBg = this.add.graphics();
     replayBg.fillStyle(0x374151, 1);
@@ -705,7 +819,6 @@ export class GameScene extends Phaser.Scene {
 
     this.winModalContainer.add([backdrop, card, titleText, diamondsInfo, movesInfo, actionBtn, replayBtn]);
 
-    // Animate modal pop in
     this.winModalContainer.setScale(0.8);
     this.winModalContainer.setAlpha(0);
     this.tweens.add({

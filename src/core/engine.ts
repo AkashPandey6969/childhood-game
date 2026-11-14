@@ -113,6 +113,49 @@ export function move(state: GameState, direction: Direction): GameState {
     };
   }
 
+  // Key Pickup behavior
+  if (targetTile === 'key') {
+    const newGrid = state.grid.map((row, y) => {
+      if (y !== targetY) return row;
+      const newRow = [...row];
+      newRow[targetX] = 'floor';
+      return newRow;
+    });
+
+    return {
+      ...state,
+      grid: newGrid,
+      player: { x: targetX, y: targetY },
+      keys: state.keys + 1,
+      moveCount: state.moveCount + 1,
+      status: 'playing',
+    };
+  }
+
+  // Door Unlocking behavior
+  if (targetTile === 'door') {
+    if (state.keys <= 0) {
+      // Locked door without key
+      return state;
+    }
+
+    const newGrid = state.grid.map((row, y) => {
+      if (y !== targetY) return row;
+      const newRow = [...row];
+      newRow[targetX] = 'floor';
+      return newRow;
+    });
+
+    return {
+      ...state,
+      grid: newGrid,
+      player: { x: targetX, y: targetY },
+      keys: state.keys - 1,
+      moveCount: state.moveCount + 1,
+      status: 'playing',
+    };
+  }
+
   // Normal floor movement
   if (targetTile === 'floor') {
     return {
@@ -154,6 +197,12 @@ export function renderAscii(state: GameState): string {
             break;
           case 'block':
             rowStr += 'B';
+            break;
+          case 'key':
+            rowStr += 'k';
+            break;
+          case 'door':
+            rowStr += 'D';
             break;
         }
       }
