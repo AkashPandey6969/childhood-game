@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" width="1080" height="1920">
+  <defs>
+    <radialGradient id="splashBg" cx="50%" cy="45%" r="70%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="50%" stop-color="#090d16"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </radialGradient>
+    <linearGradient id="goldText" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a"/>
+      <stop offset="50%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#b45309"/>
+    </linearGradient>
+    <linearGradient id="gemGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#bae6fd"/>
+      <stop offset="50%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="24" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1080" height="1920" fill="url(#splashBg)"/>
+
+  <!-- Ancient Temple Pillar Silhouettes -->
+  <rect x="0" y="0" width="120" height="1920" fill="#0b1120" opacity="0.4"/>
+  <rect x="960" y="0" width="120" height="1920" fill="#0b1120" opacity="0.4"/>
+
+  <!-- Center Ambient Halo -->
+  <circle cx="540" cy="850" r="280" fill="#38bdf8" opacity="0.08" filter="url(#glow)"/>
+
+  <!-- Center Giant Diamond Emblem -->
+  <g transform="translate(540, 800) scale(1.6)" filter="url(#glow)">
+    <!-- Top Table Facet -->
+    <polygon points="0,-100 70,-45 0,-15 -70,-45" fill="#bae6fd"/>
+    <!-- Left Crown Facet -->
+    <polygon points="-70,-45 0,-15 -100,5 -115,-30" fill="#38bdf8"/>
+    <!-- Right Crown Facet -->
+    <polygon points="70,-45 0,-15 100,5 115,-30" fill="#0284c7"/>
+    <!-- Center Lower Facet -->
+    <polygon points="0,-15 -50,20 0,110 50,20" fill="#0369a1"/>
+    <!-- Left Lower Facet -->
+    <polygon points="-100,5 -50,20 0,110" fill="#075985"/>
+    <!-- Right Lower Facet -->
+    <polygon points="100,5 50,20 0,110" fill="#0c4a6e"/>
+    <!-- Specular Highlight -->
+    <polygon points="0,-100 -20,-60 0,-40 10,-80" fill="#ffffff" opacity="0.8"/>
+  </g>
+
+  <!-- Logo Typography -->
+  <text x="540" y="1120" font-family="system-ui, -apple-system, sans-serif" font-size="76" font-weight="900" text-anchor="middle" letter-spacing="8" fill="url(#goldText)">GEM DELVER</text>
+  <text x="540" y="1180" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="600" text-anchor="middle" letter-spacing="14" fill="#94a3b8">ANCIENT PUZZLES</text>
+
+  <!-- Loading Bar Indicator -->
+  <rect x="340" y="1600" width="400" height="6" rx="3" fill="#1e293b"/>
+  <rect x="340" y="1600" width="220" height="6" rx="3" fill="#38bdf8"/>
+</svg>

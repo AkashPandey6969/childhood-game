@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background Gradient -->
+    <radialGradient id="bgGrad" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="70%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </radialGradient>
+    
+    <!-- Outer Glow -->
+    <filter id="cyanGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="16" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+
+    <!-- Gem Gradient Top -->
+    <linearGradient id="gemTop" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#bae6fd"/>
+      <stop offset="100%" stop-color="#38bdf8"/>
+    </linearGradient>
+
+    <!-- Gem Gradient Bottom -->
+    <linearGradient id="gemBot" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284c7"/>
+      <stop offset="100%" stop-color="#0369a1"/>
+    </linearGradient>
+
+    <!-- Gem Gradient Side -->
+    <linearGradient id="gemSide" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+
+    <!-- Gold Accent Gradient -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde047"/>
+      <stop offset="50%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#b45309"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Squircle App Icon Background -->
+  <rect x="16" y="16" width="480" height="480" rx="108" fill="url(#bgGrad)" stroke="#334155" stroke-width="6"/>
+
+  <!-- Subtle Temple Brick Lines -->
+  <path d="M 60 160 L 452 160 M 60 352 L 452 352 M 256 60 L 256 160 M 160 160 L 160 352 M 352 160 L 352 352 M 256 352 L 256 452" stroke="#1e293b" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- Outer Cyan Ambient Halo -->
+  <circle cx="256" cy="245" r="130" fill="#00f0ff" opacity="0.12" filter="url(#cyanGlow)"/>
+
+  <!-- Golden Pickaxes Behind Gem (Crossed) -->
+  <g stroke="url(#goldGrad)" stroke-width="8" stroke-linecap="round">
+    <line x1="140" y1="350" x2="372" y2="140"/>
+    <line x1="372" y1="350" x2="140" y2="140"/>
+  </g>
+  <path d="M 125 125 Q 140 140 155 125 L 140 110 Z" fill="url(#goldGrad)"/>
+  <path d="M 387 125 Q 372 140 357 125 L 372 110 Z" fill="url(#goldGrad)"/>
+
+  <!-- Main Radiant Diamond (Diamond Rush aesthetic) -->
+  <g filter="url(#cyanGlow)">
+    <!-- Top Table Facet -->
+    <polygon points="256,120 340,185 256,220 172,185" fill="url(#gemTop)"/>
+    <!-- Left Crown Facet -->
+    <polygon points="172,185 256,220 140,245 120,205" fill="url(#gemSide)"/>
+    <!-- Right Crown Facet -->
+    <polygon points="340,185 256,220 372,245 392,205" fill="url(#gemSide)"/>
+    <!-- Center Lower Facet -->
+    <polygon points="256,220 200,260 256,380 312,260" fill="url(#gemBot)"/>
+    <!-- Left Lower Facet -->
+    <polygon points="140,245 200,260 256,380" fill="#0369a1"/>
+    <!-- Right Lower Facet -->
+    <polygon points="372,245 312,260 256,380" fill="#075985"/>
+    <!-- Brilliant Specular Glint Highlights -->
+    <polygon points="256,120 230,170 256,190 270,140" fill="#ffffff" opacity="0.75"/>
+    <polygon points="172,185 210,200 190,230" fill="#ffffff" opacity="0.45"/>
+  </g>
+
+  <!-- Sparkle Stars -->
+  <path d="M 390 140 Q 390 160 410 160 Q 390 160 390 180 Q 390 160 370 160 Q 390 160 390 140 Z" fill="#ffffff"/>
+  <path d="M 120 300 Q 120 315 135 315 Q 120 315 120 330 Q 120 315 105 315 Q 120 315 120 300 Z" fill="#ffffff" opacity="0.8"/>
+  <circle cx="370" cy="320" r="4" fill="#38bdf8"/>
+  <circle cx="150" cy="180" r="3" fill="#fde047"/>
+</svg>
