@@ -2,7 +2,8 @@ export type TileType =
   | 'wall'     // #
   | 'floor'    // .
   | 'exit'     // E
-  | 'diamond'; // *
+  | 'diamond'  // *
+  | 'block';   // B
 
 export type Direction = 'up' | 'down' | 'left' | 'right';
 

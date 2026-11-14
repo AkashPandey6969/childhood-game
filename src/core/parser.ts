@@ -48,6 +48,9 @@ export function parseAsciiLevel(ascii: string): LevelData {
           totalDiamonds++;
           row.push('diamond');
           break;
+        case 'B':
+          row.push('block');
+          break;
         default:
           throw new Error(`Unrecognized map character '${char}' at row ${y + 1}, column ${x + 1}`);
       }

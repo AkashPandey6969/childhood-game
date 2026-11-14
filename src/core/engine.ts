@@ -67,6 +67,52 @@ export function move(state: GameState, direction: Direction): GameState {
     };
   }
 
+  // Pushable Block behavior
+  if (targetTile === 'block') {
+    const beyondX = targetX + delta.x;
+    const beyondY = targetY + delta.y;
+
+    // Check bounds for space behind the block
+    if (beyondX < 0 || beyondX >= state.width || beyondY < 0 || beyondY >= state.height) {
+      return state;
+    }
+
+    const beyondTile = state.grid[beyondY][beyondX];
+
+    // Block can only be pushed into open floor
+    if (beyondTile !== 'floor') {
+      return state;
+    }
+
+    const newGrid = state.grid.map((row, y) => {
+      if (y === targetY && y === beyondY) {
+        const newRow = [...row];
+        newRow[targetX] = 'floor';
+        newRow[beyondX] = 'block';
+        return newRow;
+      }
+      if (y === targetY) {
+        const newRow = [...row];
+        newRow[targetX] = 'floor';
+        return newRow;
+      }
+      if (y === beyondY) {
+        const newRow = [...row];
+        newRow[beyondX] = 'block';
+        return newRow;
+      }
+      return row;
+    });
+
+    return {
+      ...state,
+      grid: newGrid,
+      player: { x: targetX, y: targetY },
+      moveCount: state.moveCount + 1,
+      status: 'playing',
+    };
+  }
+
   // Normal floor movement
   if (targetTile === 'floor') {
     return {
@@ -105,6 +151,9 @@ export function renderAscii(state: GameState): string {
             break;
           case 'diamond':
             rowStr += '*';
+            break;
+          case 'block':
+            rowStr += 'B';
             break;
         }
       }

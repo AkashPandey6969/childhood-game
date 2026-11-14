@@ -1,9 +1,22 @@
 import Phaser from 'phaser';
-import { GameSession, parseAsciiLevel, Direction } from '../core';
+import { GameSession, parseAsciiLevel, Direction, LevelData } from '../core';
 import level1Raw from '../levels/level1.txt?raw';
+import level2Raw from '../levels/level2_block.txt?raw';
+
+interface LevelEntry {
+  title: string;
+  raw: string;
+}
+
+const LEVELS: LevelEntry[] = [
+  { title: 'Level 1: The Descent', raw: level1Raw },
+  { title: 'Level 2: Pushable Blocks', raw: level2Raw },
+];
 
 export class GameScene extends Phaser.Scene {
+  private currentLevelIndex: number = 0;
   private session!: GameSession;
+  private currentLevelData!: LevelData;
   private tileSize: number = 48;
   private offsetX: number = 0;
   private offsetY: number = 0;
@@ -16,10 +29,12 @@ export class GameScene extends Phaser.Scene {
   private tileContainer!: Phaser.GameObjects.Container;
   private playerObject!: Phaser.GameObjects.Container;
   private diamondObjects: Map<string, Phaser.GameObjects.Graphics> = new Map();
+  private blockObjects: Map<string, Phaser.GameObjects.Container> = new Map();
   private exitObject!: Phaser.GameObjects.Container;
   private exitGlow!: Phaser.GameObjects.Graphics;
 
   // HUD elements
+  private levelTitleText!: Phaser.GameObjects.Text;
   private diamondsText!: Phaser.GameObjects.Text;
   private movesText!: Phaser.GameObjects.Text;
   private undoButtonText!: Phaser.GameObjects.Text;
@@ -30,19 +45,14 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
-    // Parse level and initialize pure core session
-    const levelData = parseAsciiLevel(level1Raw);
-    this.session = new GameSession(levelData);
-
-    // Calculate layout & centering
-    this.computeLayout();
+    this.loadLevel(this.currentLevelIndex);
 
     // Background
     const bg = this.add.graphics();
     bg.fillGradientStyle(0x0f172a, 0x0f172a, 0x070b14, 0x070b14, 1);
     bg.fillRect(0, 0, this.scale.width, this.scale.height);
 
-    // Create containers
+    // Containers
     this.tileContainer = this.add.container(0, 0);
 
     // Build the grid and level visuals
@@ -58,17 +68,25 @@ export class GameScene extends Phaser.Scene {
     this.updateHUD();
   }
 
+  private loadLevel(index: number): void {
+    this.currentLevelIndex = index;
+    const entry = LEVELS[this.currentLevelIndex];
+    this.currentLevelData = parseAsciiLevel(entry.raw);
+    this.session = new GameSession(this.currentLevelData);
+    this.computeLayout();
+  }
+
   private computeLayout(): void {
     const state = this.session.getState();
     const availableWidth = this.scale.width - 32;
-    const availableHeight = this.scale.height - 180; // reserve space for HUD and bottom margin
+    const availableHeight = this.scale.height - 190;
 
     this.tileSize = Math.floor(Math.min(availableWidth / state.width, availableHeight / state.height, 56));
     const gridPixelWidth = this.tileSize * state.width;
     const gridPixelHeight = this.tileSize * state.height;
 
     this.offsetX = Math.floor((this.scale.width - gridPixelWidth) / 2);
-    this.offsetY = Math.floor(130 + (availableHeight - gridPixelHeight) / 2);
+    this.offsetY = Math.floor(140 + (availableHeight - gridPixelHeight) / 2);
   }
 
   private tileToPixel(x: number, y: number): { x: number; y: number } {
@@ -81,6 +99,7 @@ export class GameScene extends Phaser.Scene {
   private renderInitialBoard(): void {
     this.tileContainer.removeAll(true);
     this.diamondObjects.clear();
+    this.blockObjects.clear();
 
     const state = this.session.getState();
 
@@ -126,6 +145,12 @@ export class GameScene extends Phaser.Scene {
         // Exit
         if (tile === 'exit') {
           this.renderExit(x, y);
+        }
+
+        // Pushable Blocks
+        if (tile === 'block') {
+          const blockObj = this.renderBlock(x, y);
+          this.blockObjects.set(`${x},${y}`, blockObj);
         }
       }
     }
@@ -179,6 +204,54 @@ export class GameScene extends Phaser.Scene {
     return gfx;
   }
 
+  private renderBlock(x: number, y: number): Phaser.GameObjects.Container {
+    const { x: px, y: py } = this.tileToPixel(x, y);
+    const container = this.add.container(px, py);
+    const size = this.tileSize * 0.85;
+
+    const blockGfx = this.add.graphics();
+    // Wooden crate base
+    blockGfx.fillStyle(0xb45309, 1);
+    blockGfx.fillRoundedRect(-size / 2, -size / 2, size, size, 4);
+
+    // Darker wooden border
+    blockGfx.lineStyle(2, 0x78350f, 1);
+    blockGfx.strokeRoundedRect(-size / 2, -size / 2, size, size, 4);
+
+    // Cross wooden planks / braces (X)
+    blockGfx.lineStyle(2, 0x92400e, 0.8);
+    blockGfx.beginPath();
+    blockGfx.moveTo(-size / 2 + 4, -size / 2 + 4);
+    blockGfx.lineTo(size / 2 - 4, size / 2 - 4);
+    blockGfx.moveTo(size / 2 - 4, -size / 2 + 4);
+    blockGfx.lineTo(-size / 2 + 4, size / 2 - 4);
+    blockGfx.strokePath();
+
+    // Gold/brass corner brackets
+    blockGfx.fillStyle(0xf59e0b, 1);
+    const cornerSize = size * 0.2;
+    blockGfx.fillRect(-size / 2, -size / 2, cornerSize, 3);
+    blockGfx.fillRect(-size / 2, -size / 2, 3, cornerSize);
+
+    blockGfx.fillRect(size / 2 - cornerSize, -size / 2, cornerSize, 3);
+    blockGfx.fillRect(size / 2 - 3, -size / 2, 3, cornerSize);
+
+    blockGfx.fillRect(-size / 2, size / 2 - 3, cornerSize, 3);
+    blockGfx.fillRect(-size / 2, size / 2 - cornerSize, 3, cornerSize);
+
+    blockGfx.fillRect(size / 2 - cornerSize, size / 2 - 3, cornerSize, 3);
+    blockGfx.fillRect(size / 2 - 3, size / 2 - cornerSize, 3, cornerSize);
+
+    // Center brass emblem
+    blockGfx.fillStyle(0xfde047, 1);
+    blockGfx.fillCircle(0, 0, size * 0.12);
+
+    container.add(blockGfx);
+    this.tileContainer.add(container);
+
+    return container;
+  }
+
   private renderExit(x: number, y: number): void {
     const { x: px, y: py } = this.tileToPixel(x, y);
     this.exitObject = this.add.container(px, py);
@@ -222,7 +295,7 @@ export class GameScene extends Phaser.Scene {
       this.exitGlow.fillStyle(0xf59e0b, 0.3);
       this.exitGlow.fillCircle(0, 0, this.tileSize * 0.7);
     } else {
-      // Locked: dim red/grey indicator
+      // Locked: dim red indicator
       this.exitGlow.fillStyle(0x991b1b, 0.2);
       this.exitGlow.fillCircle(0, 0, this.tileSize * 0.45);
     }
@@ -271,60 +344,101 @@ export class GameScene extends Phaser.Scene {
     // Top Header background panel
     const hudBg = this.add.graphics();
     hudBg.fillStyle(0x111827, 0.95);
-    hudBg.fillRoundedRect(12, 12, width - 24, 76, 12);
+    hudBg.fillRoundedRect(12, 10, width - 24, 88, 12);
     hudBg.lineStyle(1, 0x374151, 1);
-    hudBg.strokeRoundedRect(12, 12, width - 24, 76, 12);
+    hudBg.strokeRoundedRect(12, 10, width - 24, 88, 12);
+
+    // Level Title
+    this.levelTitleText = this.add.text(24, 20, LEVELS[this.currentLevelIndex].title, {
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontSize: '15px',
+      color: '#fcd34d',
+      fontStyle: 'bold',
+    });
 
     // Diamonds count
-    this.diamondsText = this.add.text(28, 28, '💎 0 / 0', {
+    this.diamondsText = this.add.text(24, 42, '💎 0 / 0', {
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      fontSize: '20px',
+      fontSize: '18px',
       color: '#38bdf8',
       fontStyle: 'bold',
     });
 
     // Moves count
-    this.movesText = this.add.text(28, 54, 'Moves: 0', {
+    this.movesText = this.add.text(24, 66, 'Moves: 0', {
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      fontSize: '15px',
+      fontSize: '14px',
       color: '#9ca3af',
     });
 
+    // Level Switch Button
+    const lvlBtn = this.add.container(width - 235, 54);
+    const lvlBg = this.add.graphics();
+    lvlBg.fillStyle(0x1f2937, 1);
+    lvlBg.fillRoundedRect(-30, -16, 60, 32, 6);
+    const lvlText = this.add.text(0, 0, 'Levels', {
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontSize: '12px',
+      color: '#93c5fd',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    lvlBtn.add([lvlBg, lvlText]);
+    lvlBtn.setSize(60, 32);
+    lvlBtn.setInteractive({ useHandCursor: true });
+    lvlBtn.on('pointerdown', () => this.cycleLevel());
+
     // Undo Button
-    const undoBtn = this.add.container(width - 165, 50);
+    const undoBtn = this.add.container(width - 145, 54);
     const undoBg = this.add.graphics();
     undoBg.fillStyle(0x374151, 1);
-    undoBg.fillRoundedRect(-40, -18, 80, 36, 8);
+    undoBg.fillRoundedRect(-38, -16, 76, 32, 6);
     this.undoButtonText = this.add.text(0, 0, '↶ Undo', {
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      fontSize: '14px',
+      fontSize: '13px',
       color: '#e2e8f0',
       fontStyle: 'bold',
     }).setOrigin(0.5);
     undoBtn.add([undoBg, this.undoButtonText]);
-    undoBtn.setSize(80, 36);
+    undoBtn.setSize(76, 32);
     undoBtn.setInteractive({ useHandCursor: true });
     undoBtn.on('pointerdown', () => this.handleUndo());
 
     // Restart Button
-    const restartBtn = this.add.container(width - 65, 50);
+    const restartBtn = this.add.container(width - 60, 54);
     const restartBg = this.add.graphics();
     restartBg.fillStyle(0x4b5563, 1);
-    restartBg.fillRoundedRect(-40, -18, 80, 36, 8);
+    restartBg.fillRoundedRect(-38, -16, 76, 32, 6);
     const restartText = this.add.text(0, 0, '↻ Reset', {
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      fontSize: '14px',
+      fontSize: '13px',
       color: '#f87171',
       fontStyle: 'bold',
     }).setOrigin(0.5);
     restartBtn.add([restartBg, restartText]);
-    restartBtn.setSize(80, 36);
+    restartBtn.setSize(76, 32);
     restartBtn.setInteractive({ useHandCursor: true });
     restartBtn.on('pointerdown', () => this.handleRestart());
   }
 
+  private cycleLevel(): void {
+    if (this.isAnimating) return;
+    const nextIndex = (this.currentLevelIndex + 1) % LEVELS.length;
+    this.switchLevel(nextIndex);
+  }
+
+  private switchLevel(index: number): void {
+    if (this.winModalContainer) {
+      this.winModalContainer.destroy();
+      this.winModalContainer = undefined;
+    }
+    this.loadLevel(index);
+    this.renderInitialBoard();
+    this.updateHUD();
+  }
+
   private updateHUD(): void {
     const state = this.session.getState();
+    this.levelTitleText.setText(LEVELS[this.currentLevelIndex].title);
     this.diamondsText.setText(`💎 ${state.collectedDiamonds} / ${state.totalDiamonds}`);
     this.movesText.setText(`Moves: ${state.moveCount}`);
 
@@ -352,6 +466,8 @@ export class GameScene extends Phaser.Scene {
           this.handleUndo();
         } else if (key === 'r') {
           this.handleRestart();
+        } else if (key === 'l' || key === 'n') {
+          this.cycleLevel();
         }
       });
     }
@@ -383,20 +499,30 @@ export class GameScene extends Phaser.Scene {
     const prevState = this.session.getState();
     if (prevState.status !== 'playing') return;
 
+    // Determine target coordinate
+    const delta = {
+      up: { x: 0, y: -1 },
+      down: { x: 0, y: 1 },
+      left: { x: -1, y: 0 },
+      right: { x: 1, y: 0 },
+    }[direction];
+
+    const targetX = prevState.player.x + delta.x;
+    const targetY = prevState.player.y + delta.y;
+    const isPushedBlock =
+      targetX >= 0 &&
+      targetX < prevState.width &&
+      targetY >= 0 &&
+      targetY < prevState.height &&
+      prevState.grid[targetY][targetX] === 'block';
+
     const moveSuccessful = this.session.move(direction);
     if (!moveSuccessful) {
-      // Play a quick subtle bump bounce when blocked
-      const delta = {
-        up: { x: 0, y: -4 },
-        down: { x: 0, y: 4 },
-        left: { x: -4, y: 0 },
-        right: { x: 4, y: 0 },
-      }[direction];
-
+      // Subtle bump animation when blocked
       this.tweens.add({
         targets: this.playerObject,
-        x: this.playerObject.x + delta.x,
-        y: this.playerObject.y + delta.y,
+        x: this.playerObject.x + delta.x * 4,
+        y: this.playerObject.y + delta.y * 4,
         duration: 50,
         yoyo: true,
         ease: 'Quad.easeInOut',
@@ -414,7 +540,6 @@ export class GameScene extends Phaser.Scene {
     const collectedDiamondGfx = this.diamondObjects.get(diamondKey);
 
     if (collectedDiamondGfx) {
-      // Pop and disappear animation
       this.tweens.add({
         targets: collectedDiamondGfx,
         scaleX: 1.5,
@@ -426,6 +551,29 @@ export class GameScene extends Phaser.Scene {
           this.diamondObjects.delete(diamondKey);
         },
       });
+    }
+
+    // Animate pushed block if applicable
+    if (isPushedBlock) {
+      const beyondX = targetX + delta.x;
+      const beyondY = targetY + delta.y;
+      const oldBlockKey = `${targetX},${targetY}`;
+      const newBlockKey = `${beyondX},${beyondY}`;
+      const blockContainer = this.blockObjects.get(oldBlockKey);
+
+      if (blockContainer) {
+        this.blockObjects.delete(oldBlockKey);
+        this.blockObjects.set(newBlockKey, blockContainer);
+
+        const beyondPixel = this.tileToPixel(beyondX, beyondY);
+        this.tweens.add({
+          targets: blockContainer,
+          x: beyondPixel.x,
+          y: beyondPixel.y,
+          duration: 120,
+          ease: 'Cubic.easeOut',
+        });
+      }
     }
 
     // Move player with smooth tween
@@ -450,7 +598,6 @@ export class GameScene extends Phaser.Scene {
     if (this.isAnimating) return;
     if (!this.session.undo()) return;
 
-    // Refresh board to restore collected diamond visuals
     this.renderInitialBoard();
     this.updateHUD();
 
@@ -478,6 +625,7 @@ export class GameScene extends Phaser.Scene {
     const width = this.scale.width;
     const height = this.scale.height;
     const state = this.session.getState();
+    const hasNextLevel = this.currentLevelIndex + 1 < LEVELS.length;
 
     this.winModalContainer = this.add.container(width / 2, height / 2);
 
@@ -489,51 +637,73 @@ export class GameScene extends Phaser.Scene {
     // Dialog card
     const card = this.add.graphics();
     card.fillStyle(0x1e293b, 1);
-    card.fillRoundedRect(-180, -140, 360, 280, 16);
+    card.fillRoundedRect(-180, -150, 360, 300, 16);
     card.lineStyle(3, 0xf59e0b, 1);
-    card.strokeRoundedRect(-180, -140, 360, 280, 16);
+    card.strokeRoundedRect(-180, -150, 360, 300, 16);
 
-    // Trophy icon / title
-    const titleText = this.add.text(0, -90, '🏆 LEVEL COMPLETE! 🏆', {
+    // Title
+    const titleText = this.add.text(0, -105, '🏆 LEVEL COMPLETE! 🏆', {
       fontFamily: 'system-ui, -apple-system, sans-serif',
       fontSize: '22px',
       color: '#fcd34d',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    const diamondsInfo = this.add.text(0, -40, `All Diamonds Collected: 💎 ${state.collectedDiamonds} / ${state.totalDiamonds}`, {
+    const diamondsInfo = this.add.text(0, -60, `Diamonds: 💎 ${state.collectedDiamonds} / ${state.totalDiamonds}`, {
       fontFamily: 'system-ui, -apple-system, sans-serif',
       fontSize: '16px',
       color: '#38bdf8',
     }).setOrigin(0.5);
 
-    const movesInfo = this.add.text(0, -10, `Moves Taken: ${state.moveCount}`, {
+    const movesInfo = this.add.text(0, -30, `Moves Taken: ${state.moveCount}`, {
       fontFamily: 'system-ui, -apple-system, sans-serif',
       fontSize: '16px',
       color: '#e2e8f0',
     }).setOrigin(0.5);
 
-    // Play Again button
-    const playAgainBtn = this.add.container(0, 60);
+    // Action button(s)
+    const actionBtn = this.add.container(0, 35);
     const btnBg = this.add.graphics();
     btnBg.fillStyle(0x10b981, 1);
-    btnBg.fillRoundedRect(-90, -22, 180, 44, 10);
+    btnBg.fillRoundedRect(-95, -22, 190, 44, 10);
     btnBg.lineStyle(2, 0x34d399, 1);
-    btnBg.strokeRoundedRect(-90, -22, 180, 44, 10);
+    btnBg.strokeRoundedRect(-95, -22, 190, 44, 10);
 
-    const btnText = this.add.text(0, 0, 'Play Again', {
+    const actionTextStr = hasNextLevel ? 'Next Level ➔' : 'Play Again';
+    const btnText = this.add.text(0, 0, actionTextStr, {
       fontFamily: 'system-ui, -apple-system, sans-serif',
       fontSize: '18px',
       color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    playAgainBtn.add([btnBg, btnText]);
-    playAgainBtn.setSize(180, 44);
-    playAgainBtn.setInteractive({ useHandCursor: true });
-    playAgainBtn.on('pointerdown', () => this.handleRestart());
+    actionBtn.add([btnBg, btnText]);
+    actionBtn.setSize(190, 44);
+    actionBtn.setInteractive({ useHandCursor: true });
+    actionBtn.on('pointerdown', () => {
+      if (hasNextLevel) {
+        this.switchLevel(this.currentLevelIndex + 1);
+      } else {
+        this.handleRestart();
+      }
+    });
 
-    this.winModalContainer.add([backdrop, card, titleText, diamondsInfo, movesInfo, playAgainBtn]);
+    // Replay current button
+    const replayBtn = this.add.container(0, 95);
+    const replayBg = this.add.graphics();
+    replayBg.fillStyle(0x374151, 1);
+    replayBg.fillRoundedRect(-70, -16, 140, 32, 8);
+    const replayText = this.add.text(0, 0, 'Replay Level', {
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontSize: '14px',
+      color: '#94a3b8',
+    }).setOrigin(0.5);
+    replayBtn.add([replayBg, replayText]);
+    replayBtn.setSize(140, 32);
+    replayBtn.setInteractive({ useHandCursor: true });
+    replayBtn.on('pointerdown', () => this.handleRestart());
+
+    this.winModalContainer.add([backdrop, card, titleText, diamondsInfo, movesInfo, actionBtn, replayBtn]);
 
     // Animate modal pop in
     this.winModalContainer.setScale(0.8);
