@@ -1,11 +1,12 @@
 import Phaser from 'phaser';
-import { GameSession, parseAsciiLevel, Direction, LevelData, isGateOpen } from '../core';
+import { GameSession, parseAsciiLevel, Direction, LevelData, isGateOpen, BoulderState } from '../core';
 import level1Raw from '../levels/level1.txt?raw';
 import level2Raw from '../levels/level2_block.txt?raw';
 import level3Raw from '../levels/level3_key_door.txt?raw';
 import level4Raw from '../levels/level4_switch_gate.txt?raw';
 import level5Raw from '../levels/level5_hole.txt?raw';
 import level6Raw from '../levels/level6_spikes.txt?raw';
+import level7Raw from '../levels/level7_boulder.txt?raw';
 
 interface LevelEntry {
   title: string;
@@ -19,6 +20,7 @@ const LEVELS: LevelEntry[] = [
   { title: 'Level 4: Switches & Gates', raw: level4Raw },
   { title: 'Level 5: Chasms & Holes', raw: level5Raw },
   { title: 'Level 6: Deadly Spikes', raw: level6Raw },
+  { title: 'Level 7: Rolling Boulders', raw: level7Raw },
 ];
 
 export class GameScene extends Phaser.Scene {
@@ -44,6 +46,7 @@ export class GameScene extends Phaser.Scene {
   private gateObjects: Map<string, Phaser.GameObjects.Container> = new Map();
   private holeObjects: Map<string, Phaser.GameObjects.Graphics> = new Map();
   private spikeBootsObjects: Map<string, Phaser.GameObjects.Graphics> = new Map();
+  private boulderObjects: Map<number, Phaser.GameObjects.Container> = new Map();
   private exitObject!: Phaser.GameObjects.Container;
   private exitGlow!: Phaser.GameObjects.Graphics;
 
@@ -123,6 +126,7 @@ export class GameScene extends Phaser.Scene {
     this.gateObjects.clear();
     this.holeObjects.clear();
     this.spikeBootsObjects.clear();
+    this.boulderObjects.clear();
 
     const state = this.session.getState();
 
@@ -213,10 +217,58 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    // Boulders
+    if (state.boulders) {
+      for (const b of state.boulders) {
+        if (!b.submerged) {
+          const boulderObj = this.renderBoulder(b);
+          this.boulderObjects.set(b.id, boulderObj);
+        }
+      }
+    }
+
     // Player object
     this.renderPlayer(state.player.x, state.player.y);
 
     this.updateSwitchesAndGates();
+  }
+
+  private renderBoulder(b: BoulderState): Phaser.GameObjects.Container {
+    const { x: px, y: py } = this.tileToPixel(b.x, b.y);
+    const container = this.add.container(px, py);
+    const radius = this.tileSize * 0.42;
+
+    const gfx = this.add.graphics();
+
+    // Dark drop shadow
+    gfx.fillStyle(0x0f172a, 0.6);
+    gfx.fillCircle(2, 3, radius);
+
+    // Stone sphere base
+    gfx.fillStyle(0x64748b, 1);
+    gfx.fillCircle(0, 0, radius);
+
+    // Highlight crescent
+    gfx.fillStyle(0x94a3b8, 0.7);
+    gfx.fillCircle(-radius * 0.25, -radius * 0.25, radius * 0.55);
+
+    // Stone rim outline
+    gfx.lineStyle(2, 0x334155, 1);
+    gfx.strokeCircle(0, 0, radius);
+
+    // Cracks/chiseled lines
+    gfx.lineStyle(1.5, 0x1e293b, 0.8);
+    gfx.beginPath();
+    gfx.moveTo(-radius * 0.5, -radius * 0.1);
+    gfx.lineTo(-radius * 0.1, radius * 0.1);
+    gfx.lineTo(radius * 0.4, -radius * 0.3);
+    gfx.moveTo(-radius * 0.1, radius * 0.1);
+    gfx.lineTo(radius * 0.2, radius * 0.5);
+    gfx.strokePath();
+
+    container.add(gfx);
+    this.tileContainer.add(container);
+    return container;
   }
 
   private renderSpikes(x: number, y: number): void {
@@ -371,7 +423,8 @@ export class GameScene extends Phaser.Scene {
       const { x: px, y: py } = this.tileToPixel(x, y);
       const isPressed =
         (state.player.x === x && state.player.y === y) ||
-        state.grid[y][x] === 'block';
+        state.grid[y][x] === 'block' ||
+        (state.boulders && state.boulders.some(b => !b.submerged && b.x === x && b.y === y));
 
       padGfx.clear();
       const padSize = this.tileSize * 0.45;
@@ -961,6 +1014,53 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    // Boulder animation
+    if (nextState.boulders) {
+      for (const b of nextState.boulders) {
+        const boulderContainer = this.boulderObjects.get(b.id);
+        if (boulderContainer) {
+          const bPixel = this.tileToPixel(b.x, b.y);
+          if (b.submerged) {
+            this.tweens.add({
+              targets: boulderContainer,
+              x: bPixel.x,
+              y: bPixel.y,
+              scaleX: 0.3,
+              scaleY: 0.3,
+              alpha: 0,
+              duration: 160,
+              ease: 'Quad.easeIn',
+              onComplete: () => {
+                boulderContainer.destroy();
+                this.boulderObjects.delete(b.id);
+              },
+            });
+
+            // Update hole visual to filled
+            const holeKey = `${b.x},${b.y}`;
+            const holeGfx = this.holeObjects.get(holeKey);
+            if (holeGfx) {
+              holeGfx.clear();
+              const fillSize = this.tileSize * 0.78;
+              holeGfx.fillStyle(0x475569, 1);
+              holeGfx.fillRoundedRect(bPixel.x - fillSize / 2, bPixel.y - fillSize / 2, fillSize, fillSize, 4);
+              holeGfx.lineStyle(1.5, 0x64748b, 0.9);
+              holeGfx.strokeRoundedRect(bPixel.x - fillSize / 2, bPixel.y - fillSize / 2, fillSize, fillSize, 4);
+            }
+          } else {
+            this.tweens.add({
+              targets: boulderContainer,
+              x: bPixel.x,
+              y: bPixel.y,
+              rotation: boulderContainer.rotation + 1.2,
+              duration: 120,
+              ease: 'Cubic.easeOut',
+            });
+          }
+        }
+      }
+    }
+
     // Move player with smooth tween
     this.tweens.add({
       targets: this.playerObject,
@@ -970,6 +1070,7 @@ export class GameScene extends Phaser.Scene {
       ease: 'Cubic.easeOut',
       onComplete: () => {
         this.isAnimating = false;
+        this.updateSwitchesAndGates();
         this.updateHUD();
 
         if (nextState.status === 'won') {
