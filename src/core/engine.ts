@@ -99,11 +99,13 @@ export function move(state: GameState, direction: Direction): GameState {
     const beyondTile = state.grid[beyondY][beyondX];
     const gateOpen = isGateOpen(state);
 
-    // Block can be pushed into floor, switch, or open gate
+    // Block can be pushed into floor, switch, open gate, or hole
+    const isHole = beyondTile === 'hole';
     const canPushInto =
       beyondTile === 'floor' ||
       beyondTile === 'switch' ||
-      (beyondTile === 'gate' && gateOpen);
+      (beyondTile === 'gate' && gateOpen) ||
+      isHole;
 
     if (!canPushInto) {
       return state;
@@ -111,12 +113,13 @@ export function move(state: GameState, direction: Direction): GameState {
 
     // Determine the underlying tile for the pushed block's previous spot
     const sourceBase = state.baseGrid[targetY][targetX] === 'switch' ? 'switch' : 'floor';
+    const destinationTile = isHole ? 'floor' : 'block';
 
     const newGrid = state.grid.map((row, y) => {
       if (y === targetY && y === beyondY) {
         const newRow = [...row];
         newRow[targetX] = sourceBase;
-        newRow[beyondX] = 'block';
+        newRow[beyondX] = destinationTile;
         return newRow;
       }
       if (y === targetY) {
@@ -126,7 +129,7 @@ export function move(state: GameState, direction: Direction): GameState {
       }
       if (y === beyondY) {
         const newRow = [...row];
-        newRow[beyondX] = 'block';
+        newRow[beyondX] = destinationTile;
         return newRow;
       }
       return row;
@@ -139,6 +142,11 @@ export function move(state: GameState, direction: Direction): GameState {
       moveCount: state.moveCount + 1,
       status: 'playing',
     };
+  }
+
+  // Hole blocks direct player movement
+  if (targetTile === 'hole') {
+    return state;
   }
 
   // Key Pickup behavior
@@ -262,6 +270,9 @@ export function renderAscii(state: GameState): string {
             break;
           case 'gate':
             rowStr += 'G';
+            break;
+          case 'hole':
+            rowStr += 'O';
             break;
         }
       }

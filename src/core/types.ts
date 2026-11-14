@@ -7,7 +7,8 @@ export type TileType =
   | 'key'      // k
   | 'door'     // D
   | 'switch'   // s
-  | 'gate';    // G
+  | 'gate'     // G
+  | 'hole';    // O
 
 export type Direction = 'up' | 'down' | 'left' | 'right';
 

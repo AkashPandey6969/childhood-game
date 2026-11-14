@@ -4,6 +4,7 @@ import level1Raw from '../levels/level1.txt?raw';
 import level2Raw from '../levels/level2_block.txt?raw';
 import level3Raw from '../levels/level3_key_door.txt?raw';
 import level4Raw from '../levels/level4_switch_gate.txt?raw';
+import level5Raw from '../levels/level5_hole.txt?raw';
 
 interface LevelEntry {
   title: string;
@@ -15,6 +16,7 @@ const LEVELS: LevelEntry[] = [
   { title: 'Level 2: Pushable Blocks', raw: level2Raw },
   { title: 'Level 3: Keys & Locked Doors', raw: level3Raw },
   { title: 'Level 4: Switches & Gates', raw: level4Raw },
+  { title: 'Level 5: Chasms & Holes', raw: level5Raw },
 ];
 
 export class GameScene extends Phaser.Scene {
@@ -38,6 +40,7 @@ export class GameScene extends Phaser.Scene {
   private doorObjects: Map<string, Phaser.GameObjects.Container> = new Map();
   private switchObjects: Map<string, { padGfx: Phaser.GameObjects.Graphics; x: number; y: number }> = new Map();
   private gateObjects: Map<string, Phaser.GameObjects.Container> = new Map();
+  private holeObjects: Map<string, Phaser.GameObjects.Graphics> = new Map();
   private exitObject!: Phaser.GameObjects.Container;
   private exitGlow!: Phaser.GameObjects.Graphics;
 
@@ -113,6 +116,7 @@ export class GameScene extends Phaser.Scene {
     this.doorObjects.clear();
     this.switchObjects.clear();
     this.gateObjects.clear();
+    this.holeObjects.clear();
 
     const state = this.session.getState();
 
@@ -145,6 +149,11 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.tileContainer.add(tileGfx);
+
+        // Holes
+        if (tile === 'hole') {
+          this.renderHole(x, y);
+        }
 
         // Switches
         if (baseTile === 'switch' || tile === 'switch') {
@@ -193,11 +202,37 @@ export class GameScene extends Phaser.Scene {
     this.updateSwitchesAndGates();
   }
 
+  private renderHole(x: number, y: number): Phaser.GameObjects.Graphics {
+    const { x: px, y: py } = this.tileToPixel(x, y);
+    const gfx = this.add.graphics();
+    const size = this.tileSize * 0.82;
+
+    // Dark pit abyss
+    gfx.fillStyle(0x020617, 1);
+    gfx.fillRoundedRect(px - size / 2, py - size / 2, size, size, 6);
+
+    // Inner shadow border
+    gfx.lineStyle(2, 0x0f172a, 1);
+    gfx.strokeRoundedRect(px - size / 2, py - size / 2, size, size, 6);
+
+    // Stone rim accents
+    gfx.lineStyle(1.5, 0x475569, 0.8);
+    gfx.beginPath();
+    gfx.moveTo(px - size / 2 + 3, py - size / 2 + 3);
+    gfx.lineTo(px - size / 2 + 8, py - size / 2 + 6);
+    gfx.moveTo(px + size / 2 - 3, py + size / 2 - 3);
+    gfx.lineTo(px + size / 2 - 8, py + size / 2 - 6);
+    gfx.strokePath();
+
+    this.tileContainer.add(gfx);
+    this.holeObjects.set(`${x},${y}`, gfx);
+    return gfx;
+  }
+
   private renderSwitch(x: number, y: number): void {
     const { x: px, y: py } = this.tileToPixel(x, y);
     const size = this.tileSize * 0.75;
 
-    // Switch outer plate
     const baseGfx = this.add.graphics();
     baseGfx.fillStyle(0x1e293b, 1);
     baseGfx.fillRoundedRect(px - size / 2, py - size / 2, size, size, 4);
@@ -205,7 +240,6 @@ export class GameScene extends Phaser.Scene {
     baseGfx.strokeRoundedRect(px - size / 2, py - size / 2, size, size, 4);
     this.tileContainer.add(baseGfx);
 
-    // Inner pressure plate pad
     const padGfx = this.add.graphics();
     this.tileContainer.add(padGfx);
 
@@ -220,20 +254,17 @@ export class GameScene extends Phaser.Scene {
 
     const gateGfx = this.add.graphics();
 
-    // Portcullis frame
     gateGfx.fillStyle(0x334155, 1);
     gateGfx.fillRect(-w / 2, -h / 2, 4, h);
     gateGfx.fillRect(w / 2 - 4, -h / 2, 4, h);
     gateGfx.fillRect(-w / 2, -h / 2, w, 5);
 
-    // Vertical Iron Bars with spiked tips
     gateGfx.fillStyle(0x94a3b8, 1);
     const bars = 4;
     for (let i = 0; i < bars; i++) {
       const barX = -w / 2 + 6 + (i * (w - 12)) / (bars - 1);
       gateGfx.fillRect(barX - 2, -h / 2 + 4, 4, h - 8);
 
-      // Spike tip
       gateGfx.beginPath();
       gateGfx.moveTo(barX - 3, h / 2 - 4);
       gateGfx.lineTo(barX, h / 2 + 2);
@@ -251,7 +282,6 @@ export class GameScene extends Phaser.Scene {
     const state = this.session.getState();
     const open = isGateOpen(state);
 
-    // Update switches
     for (const [, switchInfo] of this.switchObjects) {
       const { padGfx, x, y } = switchInfo;
       const { x: px, y: py } = this.tileToPixel(x, y);
@@ -263,25 +293,20 @@ export class GameScene extends Phaser.Scene {
       const padSize = this.tileSize * 0.45;
 
       if (isPressed) {
-        // Active: bright emerald glow
         padGfx.fillStyle(0x10b981, 0.4);
         padGfx.fillCircle(px, py, padSize * 0.8);
         padGfx.fillStyle(0x34d399, 1);
         padGfx.fillRoundedRect(px - padSize / 2, py - padSize / 2, padSize, padSize, 3);
       } else {
-        // Inactive: amber plate
         padGfx.fillStyle(0xd97706, 0.8);
         padGfx.fillRoundedRect(px - padSize / 2, py - padSize / 2, padSize, padSize, 3);
       }
     }
 
-    // Update gates
     for (const [, gateContainer] of this.gateObjects) {
       if (open) {
-        // Raised open gate
         gateContainer.setAlpha(0.2);
       } else {
-        // Closed gate
         gateContainer.setAlpha(1.0);
       }
     }
@@ -778,19 +803,49 @@ export class GameScene extends Phaser.Scene {
       const oldBlockKey = `${targetX},${targetY}`;
       const newBlockKey = `${beyondX},${beyondY}`;
       const blockContainer = this.blockObjects.get(oldBlockKey);
+      const isDroppingIntoHole = prevState.grid[beyondY][beyondX] === 'hole';
 
       if (blockContainer) {
         this.blockObjects.delete(oldBlockKey);
-        this.blockObjects.set(newBlockKey, blockContainer);
-
         const beyondPixel = this.tileToPixel(beyondX, beyondY);
-        this.tweens.add({
-          targets: blockContainer,
-          x: beyondPixel.x,
-          y: beyondPixel.y,
-          duration: 120,
-          ease: 'Cubic.easeOut',
-        });
+
+        if (isDroppingIntoHole) {
+          // Block falls into hole and sinks
+          this.tweens.add({
+            targets: blockContainer,
+            x: beyondPixel.x,
+            y: beyondPixel.y,
+            scaleX: 0.3,
+            scaleY: 0.3,
+            alpha: 0,
+            duration: 160,
+            ease: 'Quad.easeIn',
+            onComplete: () => {
+              blockContainer.destroy();
+            },
+          });
+
+          // Hole becomes filled!
+          const holeKey = `${beyondX},${beyondY}`;
+          const holeGfx = this.holeObjects.get(holeKey);
+          if (holeGfx) {
+            holeGfx.clear();
+            const fillSize = this.tileSize * 0.78;
+            holeGfx.fillStyle(0x334155, 1);
+            holeGfx.fillRoundedRect(beyondPixel.x - fillSize / 2, beyondPixel.y - fillSize / 2, fillSize, fillSize, 4);
+            holeGfx.lineStyle(1.5, 0x64748b, 0.9);
+            holeGfx.strokeRoundedRect(beyondPixel.x - fillSize / 2, beyondPixel.y - fillSize / 2, fillSize, fillSize, 4);
+          }
+        } else {
+          this.blockObjects.set(newBlockKey, blockContainer);
+          this.tweens.add({
+            targets: blockContainer,
+            x: beyondPixel.x,
+            y: beyondPixel.y,
+            duration: 120,
+            ease: 'Cubic.easeOut',
+          });
+        }
       }
     }
 

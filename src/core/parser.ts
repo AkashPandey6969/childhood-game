@@ -63,6 +63,9 @@ export function parseAsciiLevel(ascii: string): LevelData {
         case 'G':
           row.push('gate');
           break;
+        case 'O':
+          row.push('hole');
+          break;
         default:
           throw new Error(`Unrecognized map character '${char}' at row ${y + 1}, column ${x + 1}`);
       }
