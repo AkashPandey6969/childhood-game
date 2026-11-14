@@ -17,6 +17,7 @@
 
 ## Hazards & Items (Phase 5)
 - `^`: Spikes (lethal unless wearing spike boots)
+- `I`: Spike Boots (item that allows safely walking over spikes)
 - `R`: Rolling Boulder
 - `S`: Simple Patrolling Enemy
 - `c`: Cracked Wall (breakable with pickaxe)

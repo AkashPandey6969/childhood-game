@@ -5,6 +5,7 @@ import level2Raw from '../levels/level2_block.txt?raw';
 import level3Raw from '../levels/level3_key_door.txt?raw';
 import level4Raw from '../levels/level4_switch_gate.txt?raw';
 import level5Raw from '../levels/level5_hole.txt?raw';
+import level6Raw from '../levels/level6_spikes.txt?raw';
 
 interface LevelEntry {
   title: string;
@@ -17,6 +18,7 @@ const LEVELS: LevelEntry[] = [
   { title: 'Level 3: Keys & Locked Doors', raw: level3Raw },
   { title: 'Level 4: Switches & Gates', raw: level4Raw },
   { title: 'Level 5: Chasms & Holes', raw: level5Raw },
+  { title: 'Level 6: Deadly Spikes', raw: level6Raw },
 ];
 
 export class GameScene extends Phaser.Scene {
@@ -41,6 +43,7 @@ export class GameScene extends Phaser.Scene {
   private switchObjects: Map<string, { padGfx: Phaser.GameObjects.Graphics; x: number; y: number }> = new Map();
   private gateObjects: Map<string, Phaser.GameObjects.Container> = new Map();
   private holeObjects: Map<string, Phaser.GameObjects.Graphics> = new Map();
+  private spikeBootsObjects: Map<string, Phaser.GameObjects.Graphics> = new Map();
   private exitObject!: Phaser.GameObjects.Container;
   private exitGlow!: Phaser.GameObjects.Graphics;
 
@@ -48,9 +51,11 @@ export class GameScene extends Phaser.Scene {
   private levelTitleText!: Phaser.GameObjects.Text;
   private diamondsText!: Phaser.GameObjects.Text;
   private keysText!: Phaser.GameObjects.Text;
+  private bootsText!: Phaser.GameObjects.Text;
   private movesText!: Phaser.GameObjects.Text;
   private undoButtonText!: Phaser.GameObjects.Text;
   private winModalContainer?: Phaser.GameObjects.Container;
+  private loseModalContainer?: Phaser.GameObjects.Container;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -117,6 +122,7 @@ export class GameScene extends Phaser.Scene {
     this.switchObjects.clear();
     this.gateObjects.clear();
     this.holeObjects.clear();
+    this.spikeBootsObjects.clear();
 
     const state = this.session.getState();
 
@@ -150,6 +156,11 @@ export class GameScene extends Phaser.Scene {
 
         this.tileContainer.add(tileGfx);
 
+        // Spikes (base or tile)
+        if (baseTile === 'spikes' || tile === 'spikes') {
+          this.renderSpikes(x, y);
+        }
+
         // Holes
         if (tile === 'hole') {
           this.renderHole(x, y);
@@ -163,6 +174,12 @@ export class GameScene extends Phaser.Scene {
         // Gates
         if (baseTile === 'gate' || tile === 'gate') {
           this.renderGate(x, y);
+        }
+
+        // Spike Boots item
+        if (tile === 'spike_boots') {
+          const bootsGfx = this.renderSpikeBoots(x, y);
+          this.spikeBootsObjects.set(`${x},${y}`, bootsGfx);
         }
 
         // Diamonds
@@ -202,20 +219,87 @@ export class GameScene extends Phaser.Scene {
     this.updateSwitchesAndGates();
   }
 
+  private renderSpikes(x: number, y: number): void {
+    const { x: px, y: py } = this.tileToPixel(x, y);
+    const gfx = this.add.graphics();
+    const size = this.tileSize * 0.8;
+
+    // Spike base plate
+    gfx.fillStyle(0x334155, 1);
+    gfx.fillRoundedRect(px - size / 2, py - size / 2, size, size, 2);
+
+    // 4 Sharp Metal Spikes
+    gfx.fillStyle(0xe2e8f0, 1);
+    const spikeH = size * 0.36;
+    const offsets = [
+      { x: -size * 0.22, y: -size * 0.22 },
+      { x: size * 0.22, y: -size * 0.22 },
+      { x: -size * 0.22, y: size * 0.22 },
+      { x: size * 0.22, y: size * 0.22 },
+    ];
+
+    for (const off of offsets) {
+      gfx.beginPath();
+      gfx.moveTo(px + off.x - 4, py + off.y + 4);
+      gfx.lineTo(px + off.x, py + off.y - spikeH);
+      gfx.lineTo(px + off.x + 4, py + off.y + 4);
+      gfx.closePath();
+      gfx.fillPath();
+
+      // Red blood/danger tip
+      gfx.fillStyle(0xef4444, 1);
+      gfx.fillCircle(px + off.x, py + off.y - spikeH, 1.5);
+      gfx.fillStyle(0xe2e8f0, 1);
+    }
+
+    this.tileContainer.add(gfx);
+  }
+
+  private renderSpikeBoots(x: number, y: number): Phaser.GameObjects.Graphics {
+    const { x: px, y: py } = this.tileToPixel(x, y);
+    const gfx = this.add.graphics();
+    const size = this.tileSize * 0.4;
+
+    // Glowing aura
+    gfx.fillStyle(0x38bdf8, 0.3);
+    gfx.fillCircle(px, py, size * 1.5);
+
+    // Boot shape
+    gfx.fillStyle(0x0284c7, 1);
+    gfx.fillRoundedRect(px - size * 0.4, py - size * 0.5, size * 0.8, size * 0.6, 2);
+    gfx.fillRoundedRect(px - size * 0.6, py - size * 0.1, size * 1.2, size * 0.5, 3);
+
+    // Armored spikes on sole
+    gfx.fillStyle(0xf1f5f9, 1);
+    gfx.fillCircle(px - size * 0.4, py + size * 0.45, 2);
+    gfx.fillCircle(px, py + size * 0.45, 2);
+    gfx.fillCircle(px + size * 0.4, py + size * 0.45, 2);
+
+    this.tileContainer.add(gfx);
+
+    this.tweens.add({
+      targets: gfx,
+      y: py - 3,
+      duration: 600,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    return gfx;
+  }
+
   private renderHole(x: number, y: number): Phaser.GameObjects.Graphics {
     const { x: px, y: py } = this.tileToPixel(x, y);
     const gfx = this.add.graphics();
     const size = this.tileSize * 0.82;
 
-    // Dark pit abyss
     gfx.fillStyle(0x020617, 1);
     gfx.fillRoundedRect(px - size / 2, py - size / 2, size, size, 6);
 
-    // Inner shadow border
     gfx.lineStyle(2, 0x0f172a, 1);
     gfx.strokeRoundedRect(px - size / 2, py - size / 2, size, size, 6);
 
-    // Stone rim accents
     gfx.lineStyle(1.5, 0x475569, 0.8);
     gfx.beginPath();
     gfx.moveTo(px - size / 2 + 3, py - size / 2 + 3);
@@ -564,16 +648,24 @@ export class GameScene extends Phaser.Scene {
     // Diamonds count
     this.diamondsText = this.add.text(24, 42, '💎 0 / 0', {
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      fontSize: '17px',
+      fontSize: '16px',
       color: '#38bdf8',
       fontStyle: 'bold',
     });
 
     // Keys count
-    this.keysText = this.add.text(125, 42, '🔑 0', {
+    this.keysText = this.add.text(110, 42, '🔑 0', {
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      fontSize: '17px',
+      fontSize: '16px',
       color: '#fbbf24',
+      fontStyle: 'bold',
+    });
+
+    // Spike Boots status
+    this.bootsText = this.add.text(165, 42, '🥾 Boots', {
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontSize: '14px',
+      color: '#38bdf8',
       fontStyle: 'bold',
     });
 
@@ -644,6 +736,10 @@ export class GameScene extends Phaser.Scene {
       this.winModalContainer.destroy();
       this.winModalContainer = undefined;
     }
+    if (this.loseModalContainer) {
+      this.loseModalContainer.destroy();
+      this.loseModalContainer = undefined;
+    }
     this.loadLevel(index);
     this.renderInitialBoard();
     this.updateHUD();
@@ -654,6 +750,7 @@ export class GameScene extends Phaser.Scene {
     this.levelTitleText.setText(LEVELS[this.currentLevelIndex].title);
     this.diamondsText.setText(`💎 ${state.collectedDiamonds} / ${state.totalDiamonds}`);
     this.keysText.setText(`🔑 ${state.keys}`);
+    this.bootsText.setAlpha(state.hasSpikeBoots ? 1.0 : 0.25);
     this.movesText.setText(`Moves: ${state.moveCount}`);
 
     const canUndo = this.session.canUndo();
@@ -762,6 +859,23 @@ export class GameScene extends Phaser.Scene {
       });
     }
 
+    // Spike boots pickup animation
+    const bootsKey = `${nextState.player.x},${nextState.player.y}`;
+    const collectedBootsGfx = this.spikeBootsObjects.get(bootsKey);
+    if (collectedBootsGfx) {
+      this.tweens.add({
+        targets: collectedBootsGfx,
+        scaleX: 1.8,
+        scaleY: 1.8,
+        alpha: 0,
+        duration: 140,
+        onComplete: () => {
+          collectedBootsGfx.destroy();
+          this.spikeBootsObjects.delete(bootsKey);
+        },
+      });
+    }
+
     // Key collection animation
     const keyKey = `${nextState.player.x},${nextState.player.y}`;
     const collectedKeyGfx = this.keyObjects.get(keyKey);
@@ -810,7 +924,6 @@ export class GameScene extends Phaser.Scene {
         const beyondPixel = this.tileToPixel(beyondX, beyondY);
 
         if (isDroppingIntoHole) {
-          // Block falls into hole and sinks
           this.tweens.add({
             targets: blockContainer,
             x: beyondPixel.x,
@@ -825,7 +938,6 @@ export class GameScene extends Phaser.Scene {
             },
           });
 
-          // Hole becomes filled!
           const holeKey = `${beyondX},${beyondY}`;
           const holeGfx = this.holeObjects.get(holeKey);
           if (holeGfx) {
@@ -862,6 +974,8 @@ export class GameScene extends Phaser.Scene {
 
         if (nextState.status === 'won') {
           this.showWinModal();
+        } else if (nextState.status === 'lost') {
+          this.showLoseModal();
         }
       },
     });
@@ -878,6 +992,10 @@ export class GameScene extends Phaser.Scene {
       this.winModalContainer.destroy();
       this.winModalContainer = undefined;
     }
+    if (this.loseModalContainer) {
+      this.loseModalContainer.destroy();
+      this.loseModalContainer = undefined;
+    }
   }
 
   private handleRestart(): void {
@@ -889,6 +1007,10 @@ export class GameScene extends Phaser.Scene {
     if (this.winModalContainer) {
       this.winModalContainer.destroy();
       this.winModalContainer = undefined;
+    }
+    if (this.loseModalContainer) {
+      this.loseModalContainer.destroy();
+      this.loseModalContainer = undefined;
     }
   }
 
@@ -977,6 +1099,89 @@ export class GameScene extends Phaser.Scene {
     this.winModalContainer.setAlpha(0);
     this.tweens.add({
       targets: this.winModalContainer,
+      scaleX: 1,
+      scaleY: 1,
+      alpha: 1,
+      duration: 250,
+      ease: 'Back.easeOut',
+    });
+  }
+
+  private showLoseModal(): void {
+    if (this.loseModalContainer) return;
+
+    const width = this.scale.width;
+    const height = this.scale.height;
+
+    this.loseModalContainer = this.add.container(width / 2, height / 2);
+
+    const backdrop = this.add.graphics();
+    backdrop.fillStyle(0x450a0a, 0.85);
+    backdrop.fillRect(-width / 2, -height / 2, width, height);
+
+    const card = this.add.graphics();
+    card.fillStyle(0x18181b, 1);
+    card.fillRoundedRect(-170, -130, 340, 260, 16);
+    card.lineStyle(3, 0xef4444, 1);
+    card.strokeRoundedRect(-170, -130, 340, 260, 16);
+
+    const titleText = this.add.text(0, -85, '☠ DEFEAT! ☠', {
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontSize: '24px',
+      color: '#ef4444',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    const reasonText = this.add.text(0, -45, 'Pierced by deadly spikes!\nFind spike boots or avoid them.', {
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontSize: '14px',
+      color: '#fca5a5',
+      align: 'center',
+    }).setOrigin(0.5);
+
+    // Undo Button
+    const undoBtn = this.add.container(0, 20);
+    const undoBg = this.add.graphics();
+    undoBg.fillStyle(0x0284c7, 1);
+    undoBg.fillRoundedRect(-85, -20, 170, 40, 10);
+    undoBg.lineStyle(2, 0x38bdf8, 1);
+    undoBg.strokeRoundedRect(-85, -20, 170, 40, 10);
+
+    const undoText = this.add.text(0, 0, '↶ Undo Move', {
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontSize: '16px',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    undoBtn.add([undoBg, undoText]);
+    undoBtn.setSize(170, 40);
+    undoBtn.setInteractive({ useHandCursor: true });
+    undoBtn.on('pointerdown', () => this.handleUndo());
+
+    // Restart Button
+    const restartBtn = this.add.container(0, 75);
+    const restartBg = this.add.graphics();
+    restartBg.fillStyle(0x374151, 1);
+    restartBg.fillRoundedRect(-70, -16, 140, 32, 8);
+    const restartText = this.add.text(0, 0, '↻ Restart', {
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontSize: '14px',
+      color: '#f87171',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    restartBtn.add([restartBg, restartText]);
+    restartBtn.setSize(140, 32);
+    restartBtn.setInteractive({ useHandCursor: true });
+    restartBtn.on('pointerdown', () => this.handleRestart());
+
+    this.loseModalContainer.add([backdrop, card, titleText, reasonText, undoBtn, restartBtn]);
+
+    this.loseModalContainer.setScale(0.8);
+    this.loseModalContainer.setAlpha(0);
+    this.tweens.add({
+      targets: this.loseModalContainer,
       scaleX: 1,
       scaleY: 1,
       alpha: 1,

@@ -1,14 +1,16 @@
 export type TileType = 
-  | 'wall'     // #
-  | 'floor'    // .
-  | 'exit'     // E
-  | 'diamond'  // *
-  | 'block'    // B
-  | 'key'      // k
-  | 'door'     // D
-  | 'switch'   // s
-  | 'gate'     // G
-  | 'hole';    // O
+  | 'wall'        // #
+  | 'floor'       // .
+  | 'exit'        // E
+  | 'diamond'     // *
+  | 'block'       // B
+  | 'key'         // k
+  | 'door'        // D
+  | 'switch'      // s
+  | 'gate'        // G
+  | 'hole'        // O
+  | 'spikes'      // ^
+  | 'spike_boots';// I
 
 export type Direction = 'up' | 'down' | 'left' | 'right';
 
@@ -37,6 +39,7 @@ export interface GameState {
   readonly collectedDiamonds: number;
   readonly totalDiamonds: number;
   readonly keys: number;
+  readonly hasSpikeBoots: boolean;
   readonly moveCount: number;
   readonly status: GameStatus;
 }

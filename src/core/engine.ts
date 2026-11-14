@@ -99,12 +99,13 @@ export function move(state: GameState, direction: Direction): GameState {
     const beyondTile = state.grid[beyondY][beyondX];
     const gateOpen = isGateOpen(state);
 
-    // Block can be pushed into floor, switch, open gate, or hole
+    // Block can be pushed into floor, switch, open gate, hole, or spikes
     const isHole = beyondTile === 'hole';
     const canPushInto =
       beyondTile === 'floor' ||
       beyondTile === 'switch' ||
       (beyondTile === 'gate' && gateOpen) ||
+      beyondTile === 'spikes' ||
       isHole;
 
     if (!canPushInto) {
@@ -112,7 +113,12 @@ export function move(state: GameState, direction: Direction): GameState {
     }
 
     // Determine the underlying tile for the pushed block's previous spot
-    const sourceBase = state.baseGrid[targetY][targetX] === 'switch' ? 'switch' : 'floor';
+    const sourceBase =
+      state.baseGrid[targetY][targetX] === 'switch'
+        ? 'switch'
+        : state.baseGrid[targetY][targetX] === 'spikes'
+        ? 'spikes'
+        : 'floor';
     const destinationTile = isHole ? 'floor' : 'block';
 
     const newGrid = state.grid.map((row, y) => {
@@ -147,6 +153,46 @@ export function move(state: GameState, direction: Direction): GameState {
   // Hole blocks direct player movement
   if (targetTile === 'hole') {
     return state;
+  }
+
+  // Spike Boots Pickup behavior
+  if (targetTile === 'spike_boots') {
+    const newGrid = state.grid.map((row, y) => {
+      if (y !== targetY) return row;
+      const newRow = [...row];
+      newRow[targetX] = 'floor';
+      return newRow;
+    });
+
+    return {
+      ...state,
+      grid: newGrid,
+      player: { x: targetX, y: targetY },
+      hasSpikeBoots: true,
+      moveCount: state.moveCount + 1,
+      status: 'playing',
+    };
+  }
+
+  // Spikes Hazard behavior
+  if (targetTile === 'spikes') {
+    if (state.hasSpikeBoots) {
+      // Safe to walk on with boots
+      return {
+        ...state,
+        player: { x: targetX, y: targetY },
+        moveCount: state.moveCount + 1,
+        status: 'playing',
+      };
+    } else {
+      // Lethal! Player stepped on spikes without boots
+      return {
+        ...state,
+        player: { x: targetX, y: targetY },
+        moveCount: state.moveCount + 1,
+        status: 'lost',
+      };
+    }
   }
 
   // Key Pickup behavior
@@ -273,6 +319,12 @@ export function renderAscii(state: GameState): string {
             break;
           case 'hole':
             rowStr += 'O';
+            break;
+          case 'spikes':
+            rowStr += '^';
+            break;
+          case 'spike_boots':
+            rowStr += 'I';
             break;
         }
       }
