@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GameSession, parseAsciiLevel, Direction, LevelData, isGateOpen, BoulderState } from '../core';
+import { GameSession, parseAsciiLevel, Direction, LevelData, isGateOpen, BoulderState, EnemyState } from '../core';
 import level1Raw from '../levels/level1.txt?raw';
 import level2Raw from '../levels/level2_block.txt?raw';
 import level3Raw from '../levels/level3_key_door.txt?raw';
@@ -7,6 +7,7 @@ import level4Raw from '../levels/level4_switch_gate.txt?raw';
 import level5Raw from '../levels/level5_hole.txt?raw';
 import level6Raw from '../levels/level6_spikes.txt?raw';
 import level7Raw from '../levels/level7_boulder.txt?raw';
+import level8Raw from '../levels/level8_enemy.txt?raw';
 
 interface LevelEntry {
   title: string;
@@ -21,6 +22,7 @@ const LEVELS: LevelEntry[] = [
   { title: 'Level 5: Chasms & Holes', raw: level5Raw },
   { title: 'Level 6: Deadly Spikes', raw: level6Raw },
   { title: 'Level 7: Rolling Boulders', raw: level7Raw },
+  { title: 'Level 8: Patrolling Beasts', raw: level8Raw },
 ];
 
 export class GameScene extends Phaser.Scene {
@@ -47,6 +49,7 @@ export class GameScene extends Phaser.Scene {
   private holeObjects: Map<string, Phaser.GameObjects.Graphics> = new Map();
   private spikeBootsObjects: Map<string, Phaser.GameObjects.Graphics> = new Map();
   private boulderObjects: Map<number, Phaser.GameObjects.Container> = new Map();
+  private enemyObjects: Map<number, Phaser.GameObjects.Container> = new Map();
   private exitObject!: Phaser.GameObjects.Container;
   private exitGlow!: Phaser.GameObjects.Graphics;
 
@@ -127,6 +130,7 @@ export class GameScene extends Phaser.Scene {
     this.holeObjects.clear();
     this.spikeBootsObjects.clear();
     this.boulderObjects.clear();
+    this.enemyObjects.clear();
 
     const state = this.session.getState();
 
@@ -227,6 +231,16 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    // Enemies
+    if (state.enemies) {
+      for (const e of state.enemies) {
+        if (e.alive !== false) {
+          const enemyObj = this.renderEnemy(e);
+          this.enemyObjects.set(e.id, enemyObj);
+        }
+      }
+    }
+
     // Player object
     this.renderPlayer(state.player.x, state.player.y);
 
@@ -267,6 +281,91 @@ export class GameScene extends Phaser.Scene {
     gfx.strokePath();
 
     container.add(gfx);
+    this.tileContainer.add(container);
+    return container;
+  }
+
+  private renderEnemy(e: EnemyState): Phaser.GameObjects.Container {
+    const { x: px, y: py } = this.tileToPixel(e.x, e.y);
+    const container = this.add.container(px, py);
+    const size = this.tileSize * 0.4;
+
+    const gfx = this.add.graphics();
+
+    // Shadow
+    gfx.fillStyle(0x020617, 0.5);
+    gfx.fillEllipse(0, size * 0.7, size * 1.6, size * 0.7);
+
+    // Scorpion / Beast legs
+    gfx.lineStyle(2, 0x450a0a, 1);
+    const legOffsets = [-size * 0.5, 0, size * 0.5];
+    for (const lx of legOffsets) {
+      // Left leg
+      gfx.beginPath();
+      gfx.moveTo(lx, 0);
+      gfx.lineTo(lx - size * 0.4, -size * 0.3);
+      gfx.lineTo(lx - size * 0.6, size * 0.4);
+      gfx.strokePath();
+
+      // Right leg
+      gfx.beginPath();
+      gfx.moveTo(lx, 0);
+      gfx.lineTo(lx + size * 0.4, -size * 0.3);
+      gfx.lineTo(lx + size * 0.6, size * 0.4);
+      gfx.strokePath();
+    }
+
+    // Carapace / Body segments
+    gfx.fillStyle(0x991b1b, 1);
+    gfx.fillCircle(-size * 0.3, 0, size * 0.55);
+    gfx.fillStyle(0xb91c1c, 1);
+    gfx.fillCircle(size * 0.2, 0, size * 0.65);
+
+    // Carapace plate ridges
+    gfx.lineStyle(1.5, 0xef4444, 0.7);
+    gfx.beginPath();
+    gfx.moveTo(-size * 0.1, -size * 0.5);
+    gfx.lineTo(-size * 0.1, size * 0.5);
+    gfx.moveTo(size * 0.2, -size * 0.6);
+    gfx.lineTo(size * 0.2, size * 0.6);
+    gfx.strokePath();
+
+    // Menacing glowing eyes
+    gfx.fillStyle(0xfacc15, 1);
+    gfx.fillCircle(size * 0.55, -size * 0.2, 2.5);
+    gfx.fillCircle(size * 0.55, size * 0.2, 2.5);
+    gfx.fillStyle(0x000000, 1);
+    gfx.fillCircle(size * 0.6, -size * 0.2, 1);
+    gfx.fillCircle(size * 0.6, size * 0.2, 1);
+
+    // Front Pincers
+    gfx.lineStyle(2.5, 0x7f1d1d, 1);
+    gfx.beginPath();
+    gfx.moveTo(size * 0.5, -size * 0.3);
+    gfx.lineTo(size * 0.9, -size * 0.5);
+    gfx.lineTo(size * 0.7, -size * 0.2);
+    gfx.moveTo(size * 0.5, size * 0.3);
+    gfx.lineTo(size * 0.9, size * 0.5);
+    gfx.lineTo(size * 0.7, size * 0.2);
+    gfx.strokePath();
+
+    container.add(gfx);
+
+    // Initial orientation: flip if moving left
+    if (e.direction === 'left') {
+      container.setScale(-1, 1);
+    }
+
+    // Subtle organic breathing animation
+    this.tweens.add({
+      targets: gfx,
+      scaleY: 1.08,
+      duration: 350,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
     this.tileContainer.add(container);
     return container;
   }
@@ -1053,6 +1152,43 @@ export class GameScene extends Phaser.Scene {
               x: bPixel.x,
               y: bPixel.y,
               rotation: boulderContainer.rotation + 1.2,
+              duration: 120,
+              ease: 'Cubic.easeOut',
+            });
+          }
+        }
+      }
+    }
+
+    // Enemy animation
+    if (nextState.enemies) {
+      for (const e of nextState.enemies) {
+        const enemyContainer = this.enemyObjects.get(e.id);
+        if (enemyContainer) {
+          if (e.alive === false) {
+            this.tweens.add({
+              targets: enemyContainer,
+              scaleX: 0.1,
+              scaleY: 0.1,
+              alpha: 0,
+              duration: 140,
+              onComplete: () => {
+                enemyContainer.destroy();
+                this.enemyObjects.delete(e.id);
+              },
+            });
+          } else {
+            const ePixel = this.tileToPixel(e.x, e.y);
+            if (e.direction === 'left') {
+              enemyContainer.setScale(-1, 1);
+            } else if (e.direction === 'right') {
+              enemyContainer.setScale(1, 1);
+            }
+
+            this.tweens.add({
+              targets: enemyContainer,
+              x: ePixel.x,
+              y: ePixel.y,
               duration: 120,
               ease: 'Cubic.easeOut',
             });

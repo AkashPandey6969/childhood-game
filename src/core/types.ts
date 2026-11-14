@@ -11,7 +11,8 @@ export type TileType =
   | 'hole'        // O
   | 'spikes'      // ^
   | 'spike_boots' // I
-  | 'boulder';    // R
+  | 'boulder'     // R
+  | 'enemy';      // S
 
 export type Direction = 'up' | 'down' | 'left' | 'right';
 
@@ -31,6 +32,14 @@ export interface BoulderState {
   readonly submerged?: boolean;
 }
 
+export interface EnemyState {
+  readonly id: number;
+  readonly x: number;
+  readonly y: number;
+  readonly direction: Direction;
+  readonly alive?: boolean;
+}
+
 export interface LevelData {
   width: number;
   height: number;
@@ -39,6 +48,7 @@ export interface LevelData {
   totalDiamonds: number;
   grid: TileType[][];
   boulders: BoulderState[];
+  enemies: EnemyState[];
 }
 
 export interface GameState {
@@ -48,6 +58,7 @@ export interface GameState {
   readonly baseGrid: readonly (readonly TileType[])[];
   readonly player: Readonly<Position>;
   readonly boulders: readonly BoulderState[];
+  readonly enemies: readonly EnemyState[];
   readonly collectedDiamonds: number;
   readonly totalDiamonds: number;
   readonly keys: number;

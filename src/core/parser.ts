@@ -1,4 +1,4 @@
-import { BoulderState, GameState, LevelData, Position, TileType } from './types';
+import { BoulderState, EnemyState, GameState, LevelData, Position, TileType } from './types';
 
 export function parseAsciiLevel(ascii: string): LevelData {
   const lines = ascii
@@ -17,6 +17,7 @@ export function parseAsciiLevel(ascii: string): LevelData {
   let exitPos: Position | null = null;
   let totalDiamonds = 0;
   const boulders: BoulderState[] = [];
+  const enemies: EnemyState[] = [];
 
   const grid: TileType[][] = [];
 
@@ -83,6 +84,16 @@ export function parseAsciiLevel(ascii: string): LevelData {
           });
           row.push('floor');
           break;
+        case 'S':
+          enemies.push({
+            id: enemies.length + 1,
+            x,
+            y,
+            direction: 'left',
+            alive: true,
+          });
+          row.push('floor');
+          break;
         default:
           throw new Error(`Unrecognized map character '${char}' at row ${y + 1}, column ${x + 1}`);
       }
@@ -105,6 +116,7 @@ export function parseAsciiLevel(ascii: string): LevelData {
     totalDiamonds,
     grid,
     boulders,
+    enemies,
   };
 }
 
@@ -134,7 +146,8 @@ export function createInitialState(level: LevelData): GameState {
     grid: clonedGrid,
     baseGrid,
     player: { ...level.playerStart },
-    boulders: level.boulders.map(b => ({ ...b })),
+    boulders: (level.boulders || []).map(b => ({ ...b })),
+    enemies: (level.enemies || []).map(e => ({ ...e })),
     collectedDiamonds: 0,
     totalDiamonds: level.totalDiamonds,
     keys: 0,

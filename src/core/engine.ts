@@ -1,4 +1,4 @@
-import { BoulderState, Direction, GameState, Position } from './types';
+import { BoulderState, Direction, EnemyState, GameState, Position } from './types';
 
 export const DIRECTION_DELTAS: Record<Direction, Position> = {
   up: { x: 0, y: -1 },
@@ -42,6 +42,7 @@ export function updateBoulders(state: GameState): GameState {
 
   let grid = state.grid;
   let status = state.status;
+  let enemies = state.enemies;
 
   // Process boulders sorted by progression in direction so front boulders move first
   const sortedBoulders = [...state.boulders].sort((a, b) => {
@@ -75,6 +76,11 @@ export function updateBoulders(state: GameState): GameState {
       status = 'lost';
       nextBouldersMap.set(b.id, { ...b, x: nx, y: ny });
       continue;
+    }
+
+    // Check if boulder crushes an enemy
+    if (enemies && enemies.some(e => (e.alive ?? true) && e.x === nx && e.y === ny)) {
+      enemies = enemies.map(e => (e.x === nx && e.y === ny ? { ...e, alive: false } : e));
     }
 
     // Check if blocked by another non-submerged boulder
@@ -124,6 +130,78 @@ export function updateBoulders(state: GameState): GameState {
     ...state,
     grid,
     boulders: updatedBoulders,
+    enemies,
+    status,
+  };
+}
+
+/**
+ * Pure function: advances all living enemies along their patrol path by 1 step.
+ * If an enemy enters the player's tile, the player is defeated (status: 'lost').
+ * If blocked by obstacles (wall, block, closed gate, hole, boulder, other enemy),
+ * the enemy reverses its patrol direction.
+ */
+export function updateEnemies(state: GameState): GameState {
+  if (!state.enemies || state.enemies.length === 0) {
+    return state;
+  }
+
+  let status = state.status;
+  const isGate = isGateOpen(state);
+
+  const updatedEnemies: EnemyState[] = [];
+
+  for (const e of state.enemies) {
+    if (e.alive === false) {
+      updatedEnemies.push(e);
+      continue;
+    }
+
+    let dir = e.direction;
+    let delta = DIRECTION_DELTAS[dir];
+    let nx = e.x + delta.x;
+    let ny = e.y + delta.y;
+
+    const isPassable = (x: number, y: number): boolean => {
+      if (x < 0 || x >= state.width || y < 0 || y >= state.height) return false;
+      // Cannot walk into non-submerged boulder
+      if (state.boulders && state.boulders.some(b => !b.submerged && b.x === x && b.y === y)) return false;
+      // Cannot walk into another enemy
+      if (updatedEnemies.some(other => (other.alive ?? true) && other.x === x && other.y === y)) return false;
+      if (state.enemies.some(other => other.id !== e.id && (other.alive ?? true) && other.x === x && other.y === y)) return false;
+
+      const tile = state.grid[y][x];
+      if (tile === 'floor' || tile === 'switch' || tile === 'spikes' || tile === 'diamond') {
+        return true;
+      }
+      if (tile === 'gate' && isGate) {
+        return true;
+      }
+      return false;
+    };
+
+    if (!isPassable(nx, ny)) {
+      // Reverse direction: 180 degrees
+      dir = dir === 'left' ? 'right' : dir === 'right' ? 'left' : dir === 'up' ? 'down' : 'up';
+      delta = DIRECTION_DELTAS[dir];
+      nx = e.x + delta.x;
+      ny = e.y + delta.y;
+    }
+
+    if (isPassable(nx, ny)) {
+      if (nx === state.player.x && ny === state.player.y) {
+        status = 'lost';
+      }
+      updatedEnemies.push({ ...e, x: nx, y: ny, direction: dir });
+    } else {
+      // Both ways blocked, stay in place with reversed direction
+      updatedEnemies.push({ ...e, direction: dir });
+    }
+  }
+
+  return {
+    ...state,
+    enemies: updatedEnemies,
     status,
   };
 }
@@ -148,6 +226,16 @@ function calculatePlayerMove(state: GameState, direction: Direction): GameState 
   // Boulders block direct player movement
   if (state.boulders && state.boulders.some(b => !b.submerged && b.x === targetX && b.y === targetY)) {
     return state;
+  }
+
+  // Enemies: stepping into an enemy is lethal
+  if (state.enemies && state.enemies.some(e => (e.alive ?? true) && e.x === targetX && e.y === targetY)) {
+    return {
+      ...state,
+      player: { x: targetX, y: targetY },
+      moveCount: state.moveCount + 1,
+      status: 'lost',
+    };
   }
 
   const targetTile = state.grid[targetY][targetX];
@@ -404,8 +492,15 @@ export function move(state: GameState, direction: Direction): GameState {
     return nextPlayerState;
   }
 
-  // Update dynamic hazards (rolling boulders)
-  return updateBoulders(nextPlayerState);
+  // Update dynamic hazards in deterministic turn order:
+  // 1. Rolling boulders
+  const afterBoulders = updateBoulders(nextPlayerState);
+  if (afterBoulders.status !== 'playing') {
+    return afterBoulders;
+  }
+
+  // 2. Patrolling enemies
+  return updateEnemies(afterBoulders);
 }
 
 /**
@@ -421,6 +516,8 @@ export function renderAscii(state: GameState): string {
         rowStr += 'P';
       } else if (state.boulders && state.boulders.some(b => !b.submerged && b.x === x && b.y === y)) {
         rowStr += 'R';
+      } else if (state.enemies && state.enemies.some(e => (e.alive ?? true) && e.x === x && e.y === y)) {
+        rowStr += 'S';
       } else {
         const tile = state.grid[y][x];
         switch (tile) {
