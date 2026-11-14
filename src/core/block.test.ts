@@ -64,7 +64,7 @@ describe('Pushable Blocks (B)', () => {
     expect(state1.grid[1][3]).toBe('block');
   });
 
-  it('blocks pushing a block into a diamond or exit', () => {
+  it('pushes a block into a diamond (collecting the diamond) and blocks pushing into exit', () => {
     // Level with diamond behind block
     const levelDiamond = parseAsciiLevel(`
 ######
@@ -73,9 +73,12 @@ describe('Pushable Blocks (B)', () => {
 ######
 `);
     const stateDiamond = createInitialState(levelDiamond);
-    // P at (1,1), tries to push block at (2,1) into diamond at (3,1)
+    // P at (1,1), pushes block at (2,1) into diamond at (3,1)
     const pushedDiamond = move(stateDiamond, 'right');
-    expect(pushedDiamond).toBe(stateDiamond); // blocked!
+    expect(pushedDiamond).not.toBe(stateDiamond);
+    expect(pushedDiamond.player).toEqual({ x: 2, y: 1 });
+    expect(pushedDiamond.grid[1][3]).toBe('block');
+    expect(pushedDiamond.collectedDiamonds).toBe(1);
 
     // Level with exit behind block
     const levelExit = parseAsciiLevel(`
@@ -86,7 +89,7 @@ describe('Pushable Blocks (B)', () => {
     const stateExit = createInitialState(levelExit);
     // P at (1,1), tries to push block at (2,1) into exit at (3,1)
     const pushedExit = move(stateExit, 'right');
-    expect(pushedExit).toBe(stateExit); // blocked!
+    expect(pushedExit).toBe(stateExit); // blocked by exit!
   });
 
   it('correctly undos a block push in GameSession', () => {
@@ -174,5 +177,65 @@ describe('Pushable Blocks (B)', () => {
     session.move('down');  // (3,6) - Exit door!
 
     expect(session.getState().status).toBe('won');
+  });
+
+  it('crushes an enemy when a block is pushed into it', () => {
+    const level = parseAsciiLevel(`
+######
+#PBS.#
+#...E#
+######
+`);
+    const state0 = createInitialState(level);
+    expect(state0.enemies?.[0].alive).toBe(true);
+
+    // Push block at (2,1) into enemy at (3,1)
+    const state1 = move(state0, 'right');
+    expect(state1.player).toEqual({ x: 2, y: 1 });
+    expect(state1.grid[1][3]).toBe('block');
+    expect(state1.enemies?.[0].alive).toBe(false);
+  });
+
+  it('pushes block over a switch and preserves switch when pushed off', () => {
+    const level = parseAsciiLevel(`
+#######
+#PBs..#
+#...EG#
+#######
+`);
+    const session = new GameSession(level);
+    // Push block onto switch at (3,1)
+    session.move('right');
+    expect(session.getState().player).toEqual({ x: 2, y: 1 });
+    expect(session.getState().grid[1][3]).toBe('block');
+    expect(session.getState().baseGrid[1][3]).toBe('switch');
+
+    // Push block off switch onto (4,1)
+    session.move('right');
+    expect(session.getState().player).toEqual({ x: 3, y: 1 });
+    expect(session.getState().grid[1][3]).toBe('switch'); // restored!
+    expect(session.getState().grid[1][4]).toBe('block');
+  });
+
+  it('restores diamond when undoing a push into diamond', () => {
+    const level = parseAsciiLevel(`
+######
+#PB*.#
+#...E#
+######
+`);
+    const session = new GameSession(level);
+    expect(session.getState().collectedDiamonds).toBe(0);
+
+    // Push block into diamond
+    session.move('right');
+    expect(session.getState().collectedDiamonds).toBe(1);
+    expect(session.getState().grid[1][3]).toBe('block');
+
+    // Undo push
+    expect(session.undo()).toBe(true);
+    expect(session.getState().collectedDiamonds).toBe(0);
+    expect(session.getState().grid[1][2]).toBe('block');
+    expect(session.getState().grid[1][3]).toBe('diamond');
   });
 });

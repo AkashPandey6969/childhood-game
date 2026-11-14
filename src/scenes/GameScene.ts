@@ -28,17 +28,17 @@ export class GameScene extends Phaser.Scene {
   // Visual game objects
   private tileContainer!: Phaser.GameObjects.Container;
   private playerObject!: Phaser.GameObjects.Container;
-  private diamondObjects: Map<string, Phaser.GameObjects.Graphics> = new Map();
+  private diamondObjects: Map<string, Phaser.GameObjects.Container> = new Map();
   private blockObjects: Map<string, Phaser.GameObjects.Container> = new Map();
-  private keyObjects: Map<string, Phaser.GameObjects.Graphics> = new Map();
+  private keyObjects: Map<string, Phaser.GameObjects.Container> = new Map();
   private doorObjects: Map<string, Phaser.GameObjects.Container> = new Map();
   private switchObjects: Map<string, { padGfx: Phaser.GameObjects.Graphics; x: number; y: number }> = new Map();
   private gateObjects: Map<string, Phaser.GameObjects.Container> = new Map();
   private holeObjects: Map<string, Phaser.GameObjects.Graphics> = new Map();
-  private spikeBootsObjects: Map<string, Phaser.GameObjects.Graphics> = new Map();
+  private spikeBootsObjects: Map<string, Phaser.GameObjects.Container> = new Map();
   private boulderObjects: Map<number, Phaser.GameObjects.Container> = new Map();
   private enemyObjects: Map<number, Phaser.GameObjects.Container> = new Map();
-  private crackedWallObjects: Map<string, Phaser.GameObjects.Graphics> = new Map();
+  private crackedWallObjects: Map<string, Phaser.GameObjects.Container> = new Map();
   private bushObjects: Map<string, Phaser.GameObjects.Container> = new Map();
   private pickaxeObjects: Map<string, Phaser.GameObjects.Container> = new Map();
   private fireObjects: Map<string, Phaser.GameObjects.Container> = new Map();
@@ -137,6 +137,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private renderInitialBoard(): void {
+    this.tweens.killAll();
+    this.isAnimating = false;
     this.tileContainer.removeAll(true);
     this.diamondObjects.clear();
     this.blockObjects.clear();
@@ -184,6 +186,7 @@ export class GameScene extends Phaser.Scene {
           tileGfx.fillCircle(px + this.tileSize / 2, py + this.tileSize / 2, 2);
         }
 
+        tileGfx.setDepth(tile === 'wall' ? 10 : 1);
         this.tileContainer.add(tileGfx);
 
         // Spikes (base or tile)
@@ -287,6 +290,9 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    // Sort tileContainer so layers strictly render from background (floor: 1) to foreground (actors: 16)
+    this.tileContainer.sort('depth');
+
     // Player object
     this.renderPlayer(state.player.x, state.player.y);
 
@@ -296,6 +302,7 @@ export class GameScene extends Phaser.Scene {
   private renderBoulder(b: BoulderState): Phaser.GameObjects.Container {
     const { x: px, y: py } = this.tileToPixel(b.x, b.y);
     const container = this.add.container(px, py);
+    container.setDepth(14);
     const radius = this.tileSize * 0.42;
 
     const gfx = this.add.graphics();
@@ -334,6 +341,7 @@ export class GameScene extends Phaser.Scene {
   private renderEnemy(e: EnemyState): Phaser.GameObjects.Container {
     const { x: px, y: py } = this.tileToPixel(e.x, e.y);
     const container = this.add.container(px, py);
+    container.setDepth(16);
     const size = this.tileSize * 0.4;
 
     const gfx = this.add.graphics();
@@ -416,45 +424,49 @@ export class GameScene extends Phaser.Scene {
     return container;
   }
 
-  private renderCrackedWall(x: number, y: number): Phaser.GameObjects.Graphics {
+  private renderCrackedWall(x: number, y: number): Phaser.GameObjects.Container {
     const { x: px, y: py } = this.tileToPixel(x, y);
+    const container = this.add.container(px, py);
+    container.setDepth(5);
     const gfx = this.add.graphics();
     const size = this.tileSize * 0.9;
 
-    // Stone base
+    // Stone base centered at (0, 0)
     gfx.fillStyle(0x475569, 1);
-    gfx.fillRoundedRect(px - size / 2, py - size / 2, size, size, 4);
+    gfx.fillRoundedRect(-size / 2, -size / 2, size, size, 4);
 
     // Stone border
     gfx.lineStyle(2, 0x334155, 1);
-    gfx.strokeRoundedRect(px - size / 2, py - size / 2, size, size, 4);
+    gfx.strokeRoundedRect(-size / 2, -size / 2, size, size, 4);
 
     // Deep jagged cracks
     gfx.lineStyle(2, 0x0f172a, 1);
     gfx.beginPath();
-    gfx.moveTo(px - size * 0.4, py - size * 0.4);
-    gfx.lineTo(px - size * 0.1, py - size * 0.1);
-    gfx.lineTo(px - size * 0.25, py + size * 0.2);
-    gfx.lineTo(px + size * 0.1, py + size * 0.4);
-    gfx.moveTo(px - size * 0.1, py - size * 0.1);
-    gfx.lineTo(px + size * 0.3, py - size * 0.2);
-    gfx.lineTo(px + size * 0.4, py + size * 0.3);
+    gfx.moveTo(-size * 0.4, -size * 0.4);
+    gfx.lineTo(-size * 0.1, -size * 0.1);
+    gfx.lineTo(-size * 0.25, size * 0.2);
+    gfx.lineTo(size * 0.1, size * 0.4);
+    gfx.moveTo(-size * 0.1, -size * 0.1);
+    gfx.lineTo(size * 0.3, -size * 0.2);
+    gfx.lineTo(size * 0.4, size * 0.3);
     gfx.strokePath();
 
     // Chalky highlight cracks
     gfx.lineStyle(1, 0x94a3b8, 0.7);
     gfx.beginPath();
-    gfx.moveTo(px - size * 0.38, py - size * 0.42);
-    gfx.lineTo(px - size * 0.08, py - size * 0.12);
+    gfx.moveTo(-size * 0.38, -size * 0.42);
+    gfx.lineTo(-size * 0.08, -size * 0.12);
     gfx.strokePath();
 
-    this.tileContainer.add(gfx);
-    return gfx;
+    container.add(gfx);
+    this.tileContainer.add(container);
+    return container;
   }
 
   private renderBush(x: number, y: number): Phaser.GameObjects.Container {
     const { x: px, y: py } = this.tileToPixel(x, y);
     const container = this.add.container(px, py);
+    container.setDepth(5);
     const r = this.tileSize * 0.22;
 
     const gfx = this.add.graphics();
@@ -510,6 +522,7 @@ export class GameScene extends Phaser.Scene {
   private renderPickaxe(x: number, y: number): Phaser.GameObjects.Container {
     const { x: px, y: py } = this.tileToPixel(x, y);
     const container = this.add.container(px, py);
+    container.setDepth(6);
     const size = this.tileSize * 0.4;
 
     const gfx = this.add.graphics();
@@ -557,6 +570,7 @@ export class GameScene extends Phaser.Scene {
   private renderFire(x: number, y: number): Phaser.GameObjects.Container {
     const { x: px, y: py } = this.tileToPixel(x, y);
     const container = this.add.container(px, py);
+    container.setDepth(6);
     const size = this.tileSize * 0.38;
 
     const gfx = this.add.graphics();
@@ -631,41 +645,45 @@ export class GameScene extends Phaser.Scene {
       gfx.fillStyle(0xe2e8f0, 1);
     }
 
+    gfx.setDepth(2);
     this.tileContainer.add(gfx);
   }
 
-  private renderSpikeBoots(x: number, y: number): Phaser.GameObjects.Graphics {
+  private renderSpikeBoots(x: number, y: number): Phaser.GameObjects.Container {
     const { x: px, y: py } = this.tileToPixel(x, y);
+    const container = this.add.container(px, py);
+    container.setDepth(6);
     const gfx = this.add.graphics();
     const size = this.tileSize * 0.4;
 
-    // Glowing aura
+    // Glowing aura centered at (0, 0)
     gfx.fillStyle(0x38bdf8, 0.3);
-    gfx.fillCircle(px, py, size * 1.5);
+    gfx.fillCircle(0, 0, size * 1.5);
 
-    // Boot shape
+    // Boot shape centered at (0, 0)
     gfx.fillStyle(0x0284c7, 1);
-    gfx.fillRoundedRect(px - size * 0.4, py - size * 0.5, size * 0.8, size * 0.6, 2);
-    gfx.fillRoundedRect(px - size * 0.6, py - size * 0.1, size * 1.2, size * 0.5, 3);
+    gfx.fillRoundedRect(-size * 0.4, -size * 0.5, size * 0.8, size * 0.6, 2);
+    gfx.fillRoundedRect(-size * 0.6, -size * 0.1, size * 1.2, size * 0.5, 3);
 
     // Armored spikes on sole
     gfx.fillStyle(0xf1f5f9, 1);
-    gfx.fillCircle(px - size * 0.4, py + size * 0.45, 2);
-    gfx.fillCircle(px, py + size * 0.45, 2);
-    gfx.fillCircle(px + size * 0.4, py + size * 0.45, 2);
+    gfx.fillCircle(-size * 0.4, size * 0.45, 2);
+    gfx.fillCircle(0, size * 0.45, 2);
+    gfx.fillCircle(size * 0.4, size * 0.45, 2);
 
-    this.tileContainer.add(gfx);
+    container.add(gfx);
+    this.tileContainer.add(container);
 
     this.tweens.add({
-      targets: gfx,
-      y: py - 3,
+      targets: container,
+      y: py - 4,
       duration: 600,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
     });
 
-    return gfx;
+    return container;
   }
 
   private renderHole(x: number, y: number): Phaser.GameObjects.Graphics {
@@ -687,6 +705,7 @@ export class GameScene extends Phaser.Scene {
     gfx.lineTo(px + size / 2 - 8, py + size / 2 - 6);
     gfx.strokePath();
 
+    gfx.setDepth(2);
     this.tileContainer.add(gfx);
     this.holeObjects.set(`${x},${y}`, gfx);
     return gfx;
@@ -701,9 +720,11 @@ export class GameScene extends Phaser.Scene {
     baseGfx.fillRoundedRect(px - size / 2, py - size / 2, size, size, 4);
     baseGfx.lineStyle(2, 0x64748b, 1);
     baseGfx.strokeRoundedRect(px - size / 2, py - size / 2, size, size, 4);
+    baseGfx.setDepth(3);
     this.tileContainer.add(baseGfx);
 
     const padGfx = this.add.graphics();
+    padGfx.setDepth(3);
     this.tileContainer.add(padGfx);
 
     this.switchObjects.set(`${x},${y}`, { padGfx, x, y });
@@ -712,6 +733,7 @@ export class GameScene extends Phaser.Scene {
   private renderGate(x: number, y: number): void {
     const { x: px, y: py } = this.tileToPixel(x, y);
     const container = this.add.container(px, py);
+    container.setDepth(4);
     const w = this.tileSize * 0.88;
     const h = this.tileSize * 0.88;
 
@@ -776,83 +798,96 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private renderDiamond(x: number, y: number): Phaser.GameObjects.Graphics {
+  private renderDiamond(x: number, y: number): Phaser.GameObjects.Container {
     const { x: px, y: py } = this.tileToPixel(x, y);
+    const container = this.add.container(px, py);
+    container.setDepth(6);
     const gfx = this.add.graphics();
     const size = this.tileSize * 0.32;
 
-    gfx.fillStyle(0x00f0ff, 0.3);
-    gfx.fillCircle(px, py, size * 1.5);
+    // Glowing cyan aura centered at (0, 0)
+    gfx.fillStyle(0x00f0ff, 0.25);
+    gfx.fillCircle(0, 0, size * 1.5);
 
+    // Brilliant diamond facet body
     gfx.fillStyle(0x00f0ff, 1);
     gfx.beginPath();
-    gfx.moveTo(px, py - size);
-    gfx.lineTo(px + size, py);
-    gfx.lineTo(px, py + size);
-    gfx.lineTo(px - size, py);
+    gfx.moveTo(0, -size);
+    gfx.lineTo(size, 0);
+    gfx.lineTo(0, size);
+    gfx.lineTo(-size, 0);
     gfx.closePath();
     gfx.fillPath();
 
-    gfx.fillStyle(0xffffff, 0.8);
+    // Specular top highlight
+    gfx.fillStyle(0xffffff, 0.85);
     gfx.beginPath();
-    gfx.moveTo(px, py - size * 0.75);
-    gfx.lineTo(px + size * 0.4, py);
-    gfx.lineTo(px, py - size * 0.1);
-    gfx.lineTo(px - size * 0.4, py);
+    gfx.moveTo(0, -size * 0.75);
+    gfx.lineTo(size * 0.4, 0);
+    gfx.lineTo(0, -size * 0.1);
+    gfx.lineTo(-size * 0.4, 0);
     gfx.closePath();
     gfx.fillPath();
 
-    this.tileContainer.add(gfx);
+    container.add(gfx);
+    this.tileContainer.add(container);
 
+    // Idle pulse in place: scales around container center (px, py)
     this.tweens.add({
-      targets: gfx,
-      scaleX: 1.1,
-      scaleY: 1.1,
-      duration: 800,
+      targets: container,
+      scaleX: 1.08,
+      scaleY: 1.08,
+      duration: 750,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
     });
 
-    return gfx;
+    return container;
   }
 
-  private renderKey(x: number, y: number): Phaser.GameObjects.Graphics {
+  private renderKey(x: number, y: number): Phaser.GameObjects.Container {
     const { x: px, y: py } = this.tileToPixel(x, y);
+    const container = this.add.container(px, py);
+    container.setDepth(6);
     const gfx = this.add.graphics();
     const r = this.tileSize * 0.16;
 
+    // Key glow centered at (0, 0)
     gfx.fillStyle(0xfbbf24, 0.3);
-    gfx.fillCircle(px, py, r * 2.2);
+    gfx.fillCircle(0, 0, r * 2.2);
 
     gfx.lineStyle(3, 0xf59e0b, 1);
-    gfx.strokeCircle(px - r * 0.8, py, r);
+    gfx.strokeCircle(-r * 0.8, 0, r);
     gfx.lineStyle(2, 0xfde047, 1);
-    gfx.strokeCircle(px - r * 0.8, py, r);
+    gfx.strokeCircle(-r * 0.8, 0, r);
 
     gfx.fillStyle(0xf59e0b, 1);
-    gfx.fillRect(px, py - 2.5, r * 1.8, 5);
+    gfx.fillRect(0, -2.5, r * 1.8, 5);
 
-    gfx.fillRect(px + r * 1.1, py + 2.5, 4, r * 0.8);
-    gfx.fillRect(px + r * 1.5, py + 2.5, 4, r * 0.6);
+    gfx.fillRect(r * 1.1, 2.5, 4, r * 0.8);
+    gfx.fillRect(r * 1.5, 2.5, 4, r * 0.6);
 
-    this.tileContainer.add(gfx);
+    container.add(gfx);
+    this.tileContainer.add(container);
 
+    // Bobbing tween: moves container from py to py - 4
     this.tweens.add({
-      targets: gfx,
-      y: py - 3,
+      targets: container,
+      y: py - 4,
       duration: 600,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
     });
 
-    return gfx;
+    return container;
   }
 
   private renderDoor(x: number, y: number): Phaser.GameObjects.Container {
     const { x: px, y: py } = this.tileToPixel(x, y);
     const container = this.add.container(px, py);
+    container.setDepth(4);
     const w = this.tileSize * 0.82;
     const h = this.tileSize * 0.88;
 
@@ -891,6 +926,7 @@ export class GameScene extends Phaser.Scene {
   private renderBlock(x: number, y: number): Phaser.GameObjects.Container {
     const { x: px, y: py } = this.tileToPixel(x, y);
     const container = this.add.container(px, py);
+    container.setDepth(12);
     const size = this.tileSize * 0.85;
 
     const blockGfx = this.add.graphics();
@@ -931,6 +967,7 @@ export class GameScene extends Phaser.Scene {
   private renderExit(x: number, y: number): void {
     const { x: px, y: py } = this.tileToPixel(x, y);
     this.exitObject = this.add.container(px, py);
+    this.exitObject.setDepth(4);
 
     this.exitGlow = this.add.graphics();
     this.exitObject.add(this.exitGlow);
@@ -979,11 +1016,12 @@ export class GameScene extends Phaser.Scene {
     const { x: px, y: py } = this.tileToPixel(x, y);
 
     if (this.playerObject) {
-      this.playerObject.setPosition(px, py);
-      return;
+      this.tweens.killTweensOf(this.playerObject);
+      this.playerObject.destroy();
     }
 
     this.playerObject = this.add.container(px, py);
+    this.playerObject.setDepth(25);
 
     const body = this.add.graphics();
     const radius = this.tileSize * 0.36;
@@ -1227,13 +1265,21 @@ export class GameScene extends Phaser.Scene {
 
     const moveSuccessful = this.session.move(direction);
     if (!moveSuccessful) {
+      const originPixel = this.tileToPixel(prevState.player.x, prevState.player.y);
+      this.isAnimating = true;
+      this.tweens.killTweensOf(this.playerObject);
+      this.playerObject.setPosition(originPixel.x, originPixel.y);
       this.tweens.add({
         targets: this.playerObject,
-        x: this.playerObject.x + delta.x * 4,
-        y: this.playerObject.y + delta.y * 4,
-        duration: 50,
+        x: originPixel.x + delta.x * 5,
+        y: originPixel.y + delta.y * 5,
+        duration: 40,
         yoyo: true,
         ease: 'Quad.easeInOut',
+        onComplete: () => {
+          this.playerObject.setPosition(originPixel.x, originPixel.y);
+          this.isAnimating = false;
+        },
       });
       return;
     }
@@ -1246,18 +1292,20 @@ export class GameScene extends Phaser.Scene {
 
     // Diamond collection animation
     const diamondKey = `${nextState.player.x},${nextState.player.y}`;
-    const collectedDiamondGfx = this.diamondObjects.get(diamondKey);
-    if (collectedDiamondGfx) {
+    const collectedDiamondContainer = this.diamondObjects.get(diamondKey);
+    if (collectedDiamondContainer) {
+      this.tweens.killTweensOf(collectedDiamondContainer);
       AudioService.getInstance().playDiamond();
       this.spawnSparkles(targetPixel.x, targetPixel.y, 0x38bdf8);
       this.tweens.add({
-        targets: collectedDiamondGfx,
+        targets: collectedDiamondContainer,
         scaleX: 1.5,
         scaleY: 1.5,
         alpha: 0,
         duration: 120,
+        ease: 'Cubic.easeOut',
         onComplete: () => {
-          collectedDiamondGfx.destroy();
+          collectedDiamondContainer.destroy();
           this.diamondObjects.delete(diamondKey);
         },
       });
@@ -1265,18 +1313,19 @@ export class GameScene extends Phaser.Scene {
 
     // Spike boots pickup animation
     const bootsKey = `${nextState.player.x},${nextState.player.y}`;
-    const collectedBootsGfx = this.spikeBootsObjects.get(bootsKey);
-    if (collectedBootsGfx) {
+    const collectedBootsContainer = this.spikeBootsObjects.get(bootsKey);
+    if (collectedBootsContainer) {
+      this.tweens.killTweensOf(collectedBootsContainer);
       AudioService.getInstance().playKey();
       this.spawnSparkles(targetPixel.x, targetPixel.y, 0xfde047);
       this.tweens.add({
-        targets: collectedBootsGfx,
+        targets: collectedBootsContainer,
         scaleX: 1.8,
         scaleY: 1.8,
         alpha: 0,
         duration: 140,
         onComplete: () => {
-          collectedBootsGfx.destroy();
+          collectedBootsContainer.destroy();
           this.spikeBootsObjects.delete(bootsKey);
         },
       });
@@ -1284,18 +1333,19 @@ export class GameScene extends Phaser.Scene {
 
     // Key collection animation
     const keyKey = `${nextState.player.x},${nextState.player.y}`;
-    const collectedKeyGfx = this.keyObjects.get(keyKey);
-    if (collectedKeyGfx) {
+    const collectedKeyContainer = this.keyObjects.get(keyKey);
+    if (collectedKeyContainer) {
+      this.tweens.killTweensOf(collectedKeyContainer);
       AudioService.getInstance().playKey();
       this.spawnSparkles(targetPixel.x, targetPixel.y, 0xfbbf24);
       this.tweens.add({
-        targets: collectedKeyGfx,
+        targets: collectedKeyContainer,
         scaleX: 1.6,
         scaleY: 1.6,
         alpha: 0,
         duration: 120,
         onComplete: () => {
-          collectedKeyGfx.destroy();
+          collectedKeyContainer.destroy();
           this.keyObjects.delete(keyKey);
         },
       });
@@ -1305,6 +1355,7 @@ export class GameScene extends Phaser.Scene {
     const doorKey = `${nextState.player.x},${nextState.player.y}`;
     const unlockedDoorContainer = this.doorObjects.get(doorKey);
     if (unlockedDoorContainer) {
+      this.tweens.killTweensOf(unlockedDoorContainer);
       AudioService.getInstance().playDoor();
       this.tweens.add({
         targets: unlockedDoorContainer,
@@ -1323,6 +1374,7 @@ export class GameScene extends Phaser.Scene {
     const pickKey = `${nextState.player.x},${nextState.player.y}`;
     const collectedPickContainer = this.pickaxeObjects.get(pickKey);
     if (collectedPickContainer) {
+      this.tweens.killTweensOf(collectedPickContainer);
       AudioService.getInstance().playToolStrike();
       this.spawnSparkles(targetPixel.x, targetPixel.y, 0x94a3b8);
       this.tweens.add({
@@ -1342,6 +1394,7 @@ export class GameScene extends Phaser.Scene {
     const fireKey = `${nextState.player.x},${nextState.player.y}`;
     const collectedFireContainer = this.fireObjects.get(fireKey);
     if (collectedFireContainer) {
+      this.tweens.killTweensOf(collectedFireContainer);
       AudioService.getInstance().playKey();
       this.spawnSparkles(targetPixel.x, targetPixel.y, 0xf97316);
       this.tweens.add({
@@ -1359,19 +1412,20 @@ export class GameScene extends Phaser.Scene {
 
     // Cracked wall breaking animation
     const crackedKey = `${nextState.player.x},${nextState.player.y}`;
-    const brokenWallGfx = this.crackedWallObjects.get(crackedKey);
-    if (brokenWallGfx) {
+    const brokenWallContainer = this.crackedWallObjects.get(crackedKey);
+    if (brokenWallContainer) {
+      this.tweens.killTweensOf(brokenWallContainer);
       AudioService.getInstance().playToolStrike();
       AudioService.getInstance().playCrackedWallBreak();
       this.cameras.main.shake(120, 0.01);
       this.tweens.add({
-        targets: brokenWallGfx,
+        targets: brokenWallContainer,
         scaleX: 0.1,
         scaleY: 0.1,
         alpha: 0,
         duration: 140,
         onComplete: () => {
-          brokenWallGfx.destroy();
+          brokenWallContainer.destroy();
           this.crackedWallObjects.delete(crackedKey);
         },
       });
@@ -1381,6 +1435,7 @@ export class GameScene extends Phaser.Scene {
     const bushKey = `${nextState.player.x},${nextState.player.y}`;
     const burnedBushContainer = this.bushObjects.get(bushKey);
     if (burnedBushContainer) {
+      this.tweens.killTweensOf(burnedBushContainer);
       AudioService.getInstance().playBushBurn();
       this.spawnSparkles(targetPixel.x, targetPixel.y, 0xef4444);
       this.tweens.add({
@@ -1410,7 +1465,28 @@ export class GameScene extends Phaser.Scene {
         this.blockObjects.delete(oldBlockKey);
         const beyondPixel = this.tileToPixel(beyondX, beyondY);
 
+        // Check if block was pushed onto a diamond (collects it)
+        const diamondAtBeyond = this.diamondObjects.get(newBlockKey);
+        if (diamondAtBeyond) {
+          this.tweens.killTweensOf(diamondAtBeyond);
+          AudioService.getInstance().playDiamond();
+          this.spawnSparkles(beyondPixel.x, beyondPixel.y, 0x38bdf8);
+          this.tweens.add({
+            targets: diamondAtBeyond,
+            scaleX: 1.5,
+            scaleY: 1.5,
+            alpha: 0,
+            duration: 120,
+            ease: 'Cubic.easeOut',
+            onComplete: () => {
+              diamondAtBeyond.destroy();
+              this.diamondObjects.delete(newBlockKey);
+            },
+          });
+        }
+
         if (isDroppingIntoHole) {
+          this.tweens.killTweensOf(blockContainer);
           this.tweens.add({
             targets: blockContainer,
             x: beyondPixel.x,
@@ -1437,11 +1513,12 @@ export class GameScene extends Phaser.Scene {
           }
         } else {
           this.blockObjects.set(newBlockKey, blockContainer);
+          this.tweens.killTweensOf(blockContainer);
           this.tweens.add({
             targets: blockContainer,
             x: beyondPixel.x,
             y: beyondPixel.y,
-            duration: 120,
+            duration: 110,
             ease: 'Cubic.easeOut',
           });
         }

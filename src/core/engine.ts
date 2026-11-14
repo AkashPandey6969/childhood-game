@@ -298,27 +298,31 @@ function calculatePlayerMove(state: GameState, direction: Direction): GameState 
       return state;
     }
 
-    // Block can be pushed into floor, switch, open gate, hole, or spikes
+    // Block can be pushed into floor, switch, open gate, hole, spikes, or diamond (collects diamond)
     const isHole = beyondTile === 'hole';
+    const isDiamond = beyondTile === 'diamond';
     const canPushInto =
       beyondTile === 'floor' ||
       beyondTile === 'switch' ||
       (beyondTile === 'gate' && gateOpen) ||
       beyondTile === 'spikes' ||
-      isHole;
+      isHole ||
+      isDiamond;
 
     if (!canPushInto) {
       return state;
     }
 
     // Determine the underlying tile for the pushed block's previous spot
-    const sourceBase =
-      state.baseGrid[targetY][targetX] === 'switch'
-        ? 'switch'
-        : state.baseGrid[targetY][targetX] === 'spikes'
-        ? 'spikes'
-        : 'floor';
+    const sourceBase = state.baseGrid[targetY][targetX] || 'floor';
     const destinationTile = isHole ? 'floor' : 'block';
+    const collectedDiamonds = isDiamond ? state.collectedDiamonds + 1 : state.collectedDiamonds;
+
+    // Block crushes any enemy at destination
+    let updatedEnemies = state.enemies;
+    if (updatedEnemies && updatedEnemies.some(e => (e.alive ?? true) && e.x === beyondX && e.y === beyondY)) {
+      updatedEnemies = updatedEnemies.map(e => (e.x === beyondX && e.y === beyondY ? { ...e, alive: false } : e));
+    }
 
     const newGrid = state.grid.map((row, y) => {
       if (y === targetY && y === beyondY) {
@@ -343,7 +347,9 @@ function calculatePlayerMove(state: GameState, direction: Direction): GameState 
     return {
       ...state,
       grid: newGrid,
+      enemies: updatedEnemies,
       player: { x: targetX, y: targetY },
+      collectedDiamonds,
       moveCount: state.moveCount + 1,
       status: 'playing',
     };
