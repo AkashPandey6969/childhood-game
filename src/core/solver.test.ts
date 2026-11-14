@@ -51,7 +51,7 @@ describe('BFS Puzzle Solver (Phase 7)', () => {
   it('solves level 6 (spikes and boots) optimally', () => {
     const result = solveLevel(level6Raw);
     expect(result.solved).toBe(true);
-    expect(result.moves).toBe(13);
+    expect(result.moves).toBe(12);
   });
 
   it('solves level 7 (boulder trap and hole fill) optimally', () => {
@@ -63,7 +63,7 @@ describe('BFS Puzzle Solver (Phase 7)', () => {
   it('solves level 8 (patrolling enemy) optimally', () => {
     const result = solveLevel(level8Raw);
     expect(result.solved).toBe(true);
-    expect(result.moves).toBe(9);
+    expect(result.moves).toBe(16);
   });
 
   it('solves level 9 (explorer tools) optimally', () => {
@@ -81,7 +81,7 @@ describe('BFS Puzzle Solver (Phase 7)', () => {
   it('solves level 11 (molten) optimally', () => {
     const result = solveLevel(level11Raw);
     expect(result.solved).toBe(true);
-    expect(result.moves).toBe(11);
+    expect(result.moves).toBe(12);
   });
 
   it('solves level 12 (patrol) optimally', () => {
@@ -93,13 +93,13 @@ describe('BFS Puzzle Solver (Phase 7)', () => {
   it('solves level 13 (seismic) optimally', () => {
     const result = solveLevel(level13Raw);
     expect(result.solved).toBe(true);
-    expect(result.moves).toBe(21);
+    expect(result.moves).toBe(22);
   });
 
   it('solves level 14 (crucible) optimally', () => {
     const result = solveLevel(level14Raw);
     expect(result.solved).toBe(true);
-    expect(result.moves).toBe(23);
+    expect(result.moves).toBe(26);
   });
 
   it('solves level 15 (master) optimally', () => {

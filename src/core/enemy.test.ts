@@ -7,8 +7,8 @@ import level8Raw from '../levels/level8_enemy.txt?raw';
 describe('Patrolling Enemy Mechanics (Phase 5.3)', () => {
   it('parses enemy entities correctly from ASCII map', () => {
     const level = parseAsciiLevel(level8Raw);
-    expect(level.width).toBe(9);
-    expect(level.height).toBe(5);
+    expect(level.width).toBe(11);
+    expect(level.height).toBe(7);
     expect(level.playerStart).toEqual({ x: 1, y: 1 });
     expect(level.enemies.length).toBe(1);
     expect(level.enemies[0]).toEqual({
@@ -28,17 +28,17 @@ describe('Patrolling Enemy Mechanics (Phase 5.3)', () => {
     expect(state.enemies[0].x).toBe(4);
     expect(state.enemies[0].direction).toBe('left');
 
-    // Move 1: P (1, 1) -> (2, 1). Enemy moves left to (3, 3)
-    state = move(state, 'right');
+    // Move 1: P (1, 1) -> (1, 2). Enemy moves left to (3, 3)
+    state = move(state, 'down');
     expect(state.enemies[0].x).toBe(3);
     expect(state.enemies[0].direction).toBe('left');
 
-    // Move 2: P (2, 1) -> (3, 1). Enemy moves left to (2, 3)
-    state = move(state, 'right');
+    // Move 2: P (1, 2) -> (1, 3). Enemy moves left to (2, 3)
+    state = move(state, 'down');
     expect(state.enemies[0].x).toBe(2);
     expect(state.enemies[0].direction).toBe('left');
 
-    // Move 3: P (3, 1) -> (3, 2). Enemy moves left to (1, 3)
+    // Move 3: P (1, 3) -> (1, 4). Enemy moves left to (1, 3)
     state = move(state, 'down');
     expect(state.enemies[0].x).toBe(1);
     expect(state.enemies[0].direction).toBe('left');
@@ -106,15 +106,22 @@ describe('Patrolling Enemy Mechanics (Phase 5.3)', () => {
     let state = createInitialState(level);
 
     const moves: ('up' | 'down' | 'left' | 'right')[] = [
-      'right', // P: (2, 1), E: (3, 3)
-      'right', // P: (3, 1), E: (2, 3)
-      'down',  // P: (3, 2), E: (1, 3)
-      'down',  // P: (3, 3), E: (2, 3) [E bounced off wall]
-      'right', // P: (4, 3), E: (3, 3)
-      'right', // P: (5, 3), E: (4, 3)
-      'right', // P: (6, 3), E: (5, 3)
-      'right', // P: (7, 3), E: (6, 3) [collected diamond!]
-      'right', // P: (8, 3), E: (7, 3) [reached exit!]
+      'down',
+      'down',
+      'down',
+      'down',
+      'right',
+      'right',
+      'right',
+      'right',
+      'up',
+      'up',
+      'right',
+      'right',
+      'down',
+      'right',
+      'right',
+      'down',
     ];
 
     for (const dir of moves) {
@@ -135,15 +142,15 @@ describe('Patrolling Enemy Mechanics (Phase 5.3)', () => {
     expect(session.getState().enemies[0].x).toBe(4);
     expect(session.getState().enemies[0].direction).toBe('left');
 
-    session.move('right'); // P: (2, 1), E: (3, 3)
+    session.move('down'); // P: (1, 2), E: (3, 3)
     expect(session.getState().enemies[0].x).toBe(3);
 
-    session.move('right'); // P: (3, 1), E: (2, 3)
+    session.move('down'); // P: (1, 3), E: (2, 3)
     expect(session.getState().enemies[0].x).toBe(2);
 
     session.undo();
     expect(session.getState().enemies[0].x).toBe(3);
-    expect(session.getState().player).toEqual({ x: 2, y: 1 });
+    expect(session.getState().player).toEqual({ x: 1, y: 2 });
 
     session.undo();
     expect(session.getState().enemies[0].x).toBe(4);

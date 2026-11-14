@@ -121,7 +121,7 @@ export const LEVELS_MANIFEST: LevelManifestEntry[] = [
     title: 'Deadly Spikes',
     zone: 'cave',
     raw: level6Raw,
-    thresholds: { threeStars: 13, twoStars: 17 },
+    thresholds: { threeStars: 12, twoStars: 16 },
   },
   {
     id: 'level7',
@@ -137,7 +137,7 @@ export const LEVELS_MANIFEST: LevelManifestEntry[] = [
     title: 'Patrolling Beasts',
     zone: 'cave',
     raw: level8Raw,
-    thresholds: { threeStars: 9, twoStars: 13 },
+    thresholds: { threeStars: 16, twoStars: 20 },
   },
   {
     id: 'level9',
@@ -161,7 +161,7 @@ export const LEVELS_MANIFEST: LevelManifestEntry[] = [
     title: 'Molten Chamber',
     zone: 'volcano',
     raw: level11Raw,
-    thresholds: { threeStars: 11, twoStars: 15 },
+    thresholds: { threeStars: 12, twoStars: 16 },
   },
   {
     id: 'level12',
@@ -177,7 +177,7 @@ export const LEVELS_MANIFEST: LevelManifestEntry[] = [
     title: 'Seismic Puzzle',
     zone: 'volcano',
     raw: level13Raw,
-    thresholds: { threeStars: 21, twoStars: 25 },
+    thresholds: { threeStars: 22, twoStars: 26 },
   },
   {
     id: 'level14',
@@ -185,7 +185,7 @@ export const LEVELS_MANIFEST: LevelManifestEntry[] = [
     title: 'The Crucible',
     zone: 'volcano',
     raw: level14Raw,
-    thresholds: { threeStars: 23, twoStars: 27 },
+    thresholds: { threeStars: 26, twoStars: 30 },
   },
   {
     id: 'level15',
