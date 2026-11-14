@@ -8,6 +8,12 @@ import level6Raw from './level6_spikes.txt?raw';
 import level7Raw from './level7_boulder.txt?raw';
 import level8Raw from './level8_enemy.txt?raw';
 import level9Raw from './level9_tools.txt?raw';
+import level10Raw from './level10_depths.txt?raw';
+import level11Raw from './level11_molten.txt?raw';
+import level12Raw from './level12_patrol.txt?raw';
+import level13Raw from './level13_seismic.txt?raw';
+import level14Raw from './level14_crucible.txt?raw';
+import level15Raw from './level15_master.txt?raw';
 
 export type ZoneThemeId = 'temple' | 'cave' | 'volcano';
 
@@ -75,7 +81,7 @@ export const LEVELS_MANIFEST: LevelManifestEntry[] = [
     title: 'The Descent',
     zone: 'temple',
     raw: level1Raw,
-    thresholds: { threeStars: 9, twoStars: 13 },
+    thresholds: { threeStars: 24, twoStars: 28 },
   },
   {
     id: 'level2',
@@ -83,7 +89,7 @@ export const LEVELS_MANIFEST: LevelManifestEntry[] = [
     title: 'Pushable Blocks',
     zone: 'temple',
     raw: level2Raw,
-    thresholds: { threeStars: 5, twoStars: 8 },
+    thresholds: { threeStars: 13, twoStars: 17 },
   },
   {
     id: 'level3',
@@ -91,23 +97,23 @@ export const LEVELS_MANIFEST: LevelManifestEntry[] = [
     title: 'Keys & Locked Doors',
     zone: 'temple',
     raw: level3Raw,
-    thresholds: { threeStars: 10, twoStars: 14 },
+    thresholds: { threeStars: 17, twoStars: 21 },
   },
   {
     id: 'level4',
     number: 4,
     title: 'Switches & Gates',
-    zone: 'cave',
+    zone: 'temple',
     raw: level4Raw,
-    thresholds: { threeStars: 10, twoStars: 14 },
+    thresholds: { threeStars: 12, twoStars: 16 },
   },
   {
     id: 'level5',
     number: 5,
     title: 'Chasms & Holes',
-    zone: 'cave',
+    zone: 'temple',
     raw: level5Raw,
-    thresholds: { threeStars: 10, twoStars: 14 },
+    thresholds: { threeStars: 14, twoStars: 18 },
   },
   {
     id: 'level6',
@@ -115,13 +121,13 @@ export const LEVELS_MANIFEST: LevelManifestEntry[] = [
     title: 'Deadly Spikes',
     zone: 'cave',
     raw: level6Raw,
-    thresholds: { threeStars: 12, twoStars: 16 },
+    thresholds: { threeStars: 13, twoStars: 17 },
   },
   {
     id: 'level7',
     number: 7,
     title: 'Rolling Boulders',
-    zone: 'volcano',
+    zone: 'cave',
     raw: level7Raw,
     thresholds: { threeStars: 8, twoStars: 12 },
   },
@@ -129,7 +135,7 @@ export const LEVELS_MANIFEST: LevelManifestEntry[] = [
     id: 'level8',
     number: 8,
     title: 'Patrolling Beasts',
-    zone: 'volcano',
+    zone: 'cave',
     raw: level8Raw,
     thresholds: { threeStars: 9, twoStars: 13 },
   },
@@ -137,9 +143,57 @@ export const LEVELS_MANIFEST: LevelManifestEntry[] = [
     id: 'level9',
     number: 9,
     title: "Explorer's Tools",
-    zone: 'volcano',
+    zone: 'cave',
     raw: level9Raw,
-    thresholds: { threeStars: 15, twoStars: 20 },
+    thresholds: { threeStars: 15, twoStars: 19 },
+  },
+  {
+    id: 'level10',
+    number: 10,
+    title: 'Echoing Depths',
+    zone: 'cave',
+    raw: level10Raw,
+    thresholds: { threeStars: 24, twoStars: 28 },
+  },
+  {
+    id: 'level11',
+    number: 11,
+    title: 'Molten Chamber',
+    zone: 'volcano',
+    raw: level11Raw,
+    thresholds: { threeStars: 11, twoStars: 15 },
+  },
+  {
+    id: 'level12',
+    number: 12,
+    title: 'Lava Patrol',
+    zone: 'volcano',
+    raw: level12Raw,
+    thresholds: { threeStars: 24, twoStars: 28 },
+  },
+  {
+    id: 'level13',
+    number: 13,
+    title: 'Seismic Puzzle',
+    zone: 'volcano',
+    raw: level13Raw,
+    thresholds: { threeStars: 21, twoStars: 25 },
+  },
+  {
+    id: 'level14',
+    number: 14,
+    title: 'The Crucible',
+    zone: 'volcano',
+    raw: level14Raw,
+    thresholds: { threeStars: 23, twoStars: 27 },
+  },
+  {
+    id: 'level15',
+    number: 15,
+    title: 'Heart of the Core',
+    zone: 'volcano',
+    raw: level15Raw,
+    thresholds: { threeStars: 22, twoStars: 26 },
   },
 ];
 
