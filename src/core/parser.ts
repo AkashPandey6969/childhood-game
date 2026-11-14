@@ -57,6 +57,12 @@ export function parseAsciiLevel(ascii: string): LevelData {
         case 'D':
           row.push('door');
           break;
+        case 's':
+          row.push('switch');
+          break;
+        case 'G':
+          row.push('gate');
+          break;
         default:
           throw new Error(`Unrecognized map character '${char}' at row ${y + 1}, column ${x + 1}`);
       }
@@ -85,10 +91,21 @@ export function createInitialState(level: LevelData): GameState {
   // Deep copy grid to ensure immutability
   const clonedGrid = level.grid.map(row => [...row]);
 
+  // Construct base terrain grid: static elements (wall, switch, gate, exit, floor)
+  const baseGrid = level.grid.map(row =>
+    row.map(tile => {
+      if (tile === 'wall' || tile === 'switch' || tile === 'gate' || tile === 'exit') {
+        return tile;
+      }
+      return 'floor';
+    })
+  );
+
   return {
     width: level.width,
     height: level.height,
     grid: clonedGrid,
+    baseGrid,
     player: { ...level.playerStart },
     collectedDiamonds: 0,
     totalDiamonds: level.totalDiamonds,

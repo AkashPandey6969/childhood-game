@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
-import { GameSession, parseAsciiLevel, Direction, LevelData } from '../core';
+import { GameSession, parseAsciiLevel, Direction, LevelData, isGateOpen } from '../core';
 import level1Raw from '../levels/level1.txt?raw';
 import level2Raw from '../levels/level2_block.txt?raw';
 import level3Raw from '../levels/level3_key_door.txt?raw';
+import level4Raw from '../levels/level4_switch_gate.txt?raw';
 
 interface LevelEntry {
   title: string;
@@ -13,6 +14,7 @@ const LEVELS: LevelEntry[] = [
   { title: 'Level 1: The Descent', raw: level1Raw },
   { title: 'Level 2: Pushable Blocks', raw: level2Raw },
   { title: 'Level 3: Keys & Locked Doors', raw: level3Raw },
+  { title: 'Level 4: Switches & Gates', raw: level4Raw },
 ];
 
 export class GameScene extends Phaser.Scene {
@@ -34,6 +36,8 @@ export class GameScene extends Phaser.Scene {
   private blockObjects: Map<string, Phaser.GameObjects.Container> = new Map();
   private keyObjects: Map<string, Phaser.GameObjects.Graphics> = new Map();
   private doorObjects: Map<string, Phaser.GameObjects.Container> = new Map();
+  private switchObjects: Map<string, { padGfx: Phaser.GameObjects.Graphics; x: number; y: number }> = new Map();
+  private gateObjects: Map<string, Phaser.GameObjects.Container> = new Map();
   private exitObject!: Phaser.GameObjects.Container;
   private exitGlow!: Phaser.GameObjects.Graphics;
 
@@ -107,6 +111,8 @@ export class GameScene extends Phaser.Scene {
     this.blockObjects.clear();
     this.keyObjects.clear();
     this.doorObjects.clear();
+    this.switchObjects.clear();
+    this.gateObjects.clear();
 
     const state = this.session.getState();
 
@@ -114,34 +120,41 @@ export class GameScene extends Phaser.Scene {
     for (let y = 0; y < state.height; y++) {
       for (let x = 0; x < state.width; x++) {
         const tile = state.grid[y][x];
+        const baseTile = state.baseGrid[y][x];
         const px = this.offsetX + x * this.tileSize;
         const py = this.offsetY + y * this.tileSize;
 
         const tileGfx = this.add.graphics();
 
         if (tile === 'wall') {
-          // Beveled stone wall block
           tileGfx.fillStyle(0x334155, 1);
           tileGfx.fillRoundedRect(px + 1, py + 1, this.tileSize - 2, this.tileSize - 2, 4);
           tileGfx.lineStyle(2, 0x475569, 1);
           tileGfx.strokeRoundedRect(px + 2, py + 2, this.tileSize - 4, this.tileSize - 4, 3);
 
-          // Inner bevel highlight
           tileGfx.fillStyle(0x1e293b, 0.6);
           tileGfx.fillRect(px + 4, py + this.tileSize - 6, this.tileSize - 8, 4);
         } else {
-          // Walkable floor tile
           tileGfx.fillStyle(0x1e293b, 1);
           tileGfx.fillRect(px, py, this.tileSize, this.tileSize);
           tileGfx.lineStyle(1, 0x0f172a, 0.8);
           tileGfx.strokeRect(px, py, this.tileSize, this.tileSize);
 
-          // Subtle stone floor dot
           tileGfx.fillStyle(0x334155, 0.4);
           tileGfx.fillCircle(px + this.tileSize / 2, py + this.tileSize / 2, 2);
         }
 
         this.tileContainer.add(tileGfx);
+
+        // Switches
+        if (baseTile === 'switch' || tile === 'switch') {
+          this.renderSwitch(x, y);
+        }
+
+        // Gates
+        if (baseTile === 'gate' || tile === 'gate') {
+          this.renderGate(x, y);
+        }
 
         // Diamonds
         if (tile === 'diamond') {
@@ -176,6 +189,102 @@ export class GameScene extends Phaser.Scene {
 
     // Player object
     this.renderPlayer(state.player.x, state.player.y);
+
+    this.updateSwitchesAndGates();
+  }
+
+  private renderSwitch(x: number, y: number): void {
+    const { x: px, y: py } = this.tileToPixel(x, y);
+    const size = this.tileSize * 0.75;
+
+    // Switch outer plate
+    const baseGfx = this.add.graphics();
+    baseGfx.fillStyle(0x1e293b, 1);
+    baseGfx.fillRoundedRect(px - size / 2, py - size / 2, size, size, 4);
+    baseGfx.lineStyle(2, 0x64748b, 1);
+    baseGfx.strokeRoundedRect(px - size / 2, py - size / 2, size, size, 4);
+    this.tileContainer.add(baseGfx);
+
+    // Inner pressure plate pad
+    const padGfx = this.add.graphics();
+    this.tileContainer.add(padGfx);
+
+    this.switchObjects.set(`${x},${y}`, { padGfx, x, y });
+  }
+
+  private renderGate(x: number, y: number): void {
+    const { x: px, y: py } = this.tileToPixel(x, y);
+    const container = this.add.container(px, py);
+    const w = this.tileSize * 0.88;
+    const h = this.tileSize * 0.88;
+
+    const gateGfx = this.add.graphics();
+
+    // Portcullis frame
+    gateGfx.fillStyle(0x334155, 1);
+    gateGfx.fillRect(-w / 2, -h / 2, 4, h);
+    gateGfx.fillRect(w / 2 - 4, -h / 2, 4, h);
+    gateGfx.fillRect(-w / 2, -h / 2, w, 5);
+
+    // Vertical Iron Bars with spiked tips
+    gateGfx.fillStyle(0x94a3b8, 1);
+    const bars = 4;
+    for (let i = 0; i < bars; i++) {
+      const barX = -w / 2 + 6 + (i * (w - 12)) / (bars - 1);
+      gateGfx.fillRect(barX - 2, -h / 2 + 4, 4, h - 8);
+
+      // Spike tip
+      gateGfx.beginPath();
+      gateGfx.moveTo(barX - 3, h / 2 - 4);
+      gateGfx.lineTo(barX, h / 2 + 2);
+      gateGfx.lineTo(barX + 3, h / 2 - 4);
+      gateGfx.closePath();
+      gateGfx.fillPath();
+    }
+
+    container.add(gateGfx);
+    this.tileContainer.add(container);
+    this.gateObjects.set(`${x},${y}`, container);
+  }
+
+  private updateSwitchesAndGates(): void {
+    const state = this.session.getState();
+    const open = isGateOpen(state);
+
+    // Update switches
+    for (const [, switchInfo] of this.switchObjects) {
+      const { padGfx, x, y } = switchInfo;
+      const { x: px, y: py } = this.tileToPixel(x, y);
+      const isPressed =
+        (state.player.x === x && state.player.y === y) ||
+        state.grid[y][x] === 'block';
+
+      padGfx.clear();
+      const padSize = this.tileSize * 0.45;
+
+      if (isPressed) {
+        // Active: bright emerald glow
+        padGfx.fillStyle(0x10b981, 0.4);
+        padGfx.fillCircle(px, py, padSize * 0.8);
+        padGfx.fillStyle(0x34d399, 1);
+        padGfx.fillRoundedRect(px - padSize / 2, py - padSize / 2, padSize, padSize, 3);
+      } else {
+        // Inactive: amber plate
+        padGfx.fillStyle(0xd97706, 0.8);
+        padGfx.fillRoundedRect(px - padSize / 2, py - padSize / 2, padSize, padSize, 3);
+      }
+    }
+
+    // Update gates
+    for (const [, gateContainer] of this.gateObjects) {
+      if (open) {
+        // Raised open gate
+        gateContainer.setAlpha(0.2);
+      } else {
+        // Closed gate
+        gateContainer.setAlpha(1.0);
+      }
+    }
   }
 
   private renderDiamond(x: number, y: number): Phaser.GameObjects.Graphics {
@@ -224,27 +333,22 @@ export class GameScene extends Phaser.Scene {
     const gfx = this.add.graphics();
     const r = this.tileSize * 0.16;
 
-    // Outer glow
     gfx.fillStyle(0xfbbf24, 0.3);
     gfx.fillCircle(px, py, r * 2.2);
 
-    // Key Bow (Ring)
     gfx.lineStyle(3, 0xf59e0b, 1);
     gfx.strokeCircle(px - r * 0.8, py, r);
     gfx.lineStyle(2, 0xfde047, 1);
     gfx.strokeCircle(px - r * 0.8, py, r);
 
-    // Key Shaft
     gfx.fillStyle(0xf59e0b, 1);
     gfx.fillRect(px, py - 2.5, r * 1.8, 5);
 
-    // Key Bit / Teeth
     gfx.fillRect(px + r * 1.1, py + 2.5, 4, r * 0.8);
     gfx.fillRect(px + r * 1.5, py + 2.5, 4, r * 0.6);
 
     this.tileContainer.add(gfx);
 
-    // Hover tween
     this.tweens.add({
       targets: gfx,
       y: py - 3,
@@ -264,27 +368,21 @@ export class GameScene extends Phaser.Scene {
     const h = this.tileSize * 0.88;
 
     const doorGfx = this.add.graphics();
-
-    // Dark iron/stone door base
     doorGfx.fillStyle(0x475569, 1);
     doorGfx.fillRoundedRect(-w / 2, -h / 2, w, h, 4);
 
-    // Iron border
     doorGfx.lineStyle(2, 0x1e293b, 1);
     doorGfx.strokeRoundedRect(-w / 2, -h / 2, w, h, 4);
 
-    // Horizontal reinforcement iron bands
     doorGfx.fillStyle(0x334155, 1);
     doorGfx.fillRect(-w / 2, -h / 3, w, 5);
     doorGfx.fillRect(-w / 2, h / 3 - 5, w, 5);
 
-    // Brass keyhole plate
     doorGfx.fillStyle(0xd97706, 1);
     doorGfx.fillCircle(0, 0, w * 0.2);
     doorGfx.lineStyle(1.5, 0xfde047, 1);
     doorGfx.strokeCircle(0, 0, w * 0.2);
 
-    // Keyhole
     doorGfx.fillStyle(0x0f172a, 1);
     doorGfx.fillCircle(0, -2, 3);
     doorGfx.beginPath();
@@ -537,6 +635,7 @@ export class GameScene extends Phaser.Scene {
     this.undoButtonText.setAlpha(canUndo ? 1.0 : 0.4);
 
     this.updateExitVisual();
+    this.updateSwitchesAndGates();
   }
 
   private setupInputHandlers(): void {

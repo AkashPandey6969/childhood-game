@@ -5,7 +5,9 @@ export type TileType =
   | 'diamond'  // *
   | 'block'    // B
   | 'key'      // k
-  | 'door';    // D
+  | 'door'     // D
+  | 'switch'   // s
+  | 'gate';    // G
 
 export type Direction = 'up' | 'down' | 'left' | 'right';
 
@@ -29,6 +31,7 @@ export interface GameState {
   readonly width: number;
   readonly height: number;
   readonly grid: readonly (readonly TileType[])[];
+  readonly baseGrid: readonly (readonly TileType[])[];
   readonly player: Readonly<Position>;
   readonly collectedDiamonds: number;
   readonly totalDiamonds: number;

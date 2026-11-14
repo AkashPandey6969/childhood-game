@@ -8,6 +8,25 @@ export const DIRECTION_DELTAS: Record<Direction, Position> = {
 };
 
 /**
+ * Checks whether any switch / pressure plate is currently held down by the player or a block.
+ */
+export function isGateOpen(state: GameState): boolean {
+  for (let y = 0; y < state.height; y++) {
+    for (let x = 0; x < state.width; x++) {
+      if (state.baseGrid[y][x] === 'switch') {
+        if (state.player.x === x && state.player.y === y) {
+          return true;
+        }
+        if (state.grid[y][x] === 'block') {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+/**
  * Pure function: calculates the next game state given the current state and a movement direction.
  * Returns the exact same state object if the move is invalid or blocked.
  */
@@ -78,22 +97,31 @@ export function move(state: GameState, direction: Direction): GameState {
     }
 
     const beyondTile = state.grid[beyondY][beyondX];
+    const gateOpen = isGateOpen(state);
 
-    // Block can only be pushed into open floor
-    if (beyondTile !== 'floor') {
+    // Block can be pushed into floor, switch, or open gate
+    const canPushInto =
+      beyondTile === 'floor' ||
+      beyondTile === 'switch' ||
+      (beyondTile === 'gate' && gateOpen);
+
+    if (!canPushInto) {
       return state;
     }
+
+    // Determine the underlying tile for the pushed block's previous spot
+    const sourceBase = state.baseGrid[targetY][targetX] === 'switch' ? 'switch' : 'floor';
 
     const newGrid = state.grid.map((row, y) => {
       if (y === targetY && y === beyondY) {
         const newRow = [...row];
-        newRow[targetX] = 'floor';
+        newRow[targetX] = sourceBase;
         newRow[beyondX] = 'block';
         return newRow;
       }
       if (y === targetY) {
         const newRow = [...row];
-        newRow[targetX] = 'floor';
+        newRow[targetX] = sourceBase;
         return newRow;
       }
       if (y === beyondY) {
@@ -156,6 +184,31 @@ export function move(state: GameState, direction: Direction): GameState {
     };
   }
 
+  // Switch / Pressure Plate movement
+  if (targetTile === 'switch') {
+    return {
+      ...state,
+      player: { x: targetX, y: targetY },
+      moveCount: state.moveCount + 1,
+      status: 'playing',
+    };
+  }
+
+  // Gate movement
+  if (targetTile === 'gate') {
+    if (!isGateOpen(state)) {
+      // Gate is closed, movement blocked
+      return state;
+    }
+
+    return {
+      ...state,
+      player: { x: targetX, y: targetY },
+      moveCount: state.moveCount + 1,
+      status: 'playing',
+    };
+  }
+
   // Normal floor movement
   if (targetTile === 'floor') {
     return {
@@ -203,6 +256,12 @@ export function renderAscii(state: GameState): string {
             break;
           case 'door':
             rowStr += 'D';
+            break;
+          case 'switch':
+            rowStr += 's';
+            break;
+          case 'gate':
+            rowStr += 'G';
             break;
         }
       }
