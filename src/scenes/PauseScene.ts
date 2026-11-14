@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { SaveService } from '../services/SaveService';
+import { AudioService } from '../services/AudioService';
 import { getLevelEntry } from '../levels/manifest';
 
 export class PauseScene extends Phaser.Scene {
@@ -102,6 +103,8 @@ export class PauseScene extends Phaser.Scene {
     soundText.on('pointerdown', () => {
       const next = !SaveService.isSoundEnabled();
       SaveService.setSoundEnabled(next);
+      SaveService.setMusicEnabled(next);
+      AudioService.getInstance().updateMusicState();
       soundText.setText(next ? '🔊 Sound: ON' : '🔇 Sound: OFF');
     });
     card.add(soundText);

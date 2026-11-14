@@ -8,6 +8,7 @@ import {
   getNextLevelEntry,
 } from '../levels/manifest';
 import { SaveService } from '../services/SaveService';
+import { AudioService } from '../services/AudioService';
 
 export class GameScene extends Phaser.Scene {
   private currentLevelEntry!: LevelManifestEntry;
@@ -112,6 +113,7 @@ export class GameScene extends Phaser.Scene {
     this.session = new GameSession(this.currentLevelData);
     this.computeLayout();
     this.updateBackground();
+    AudioService.getInstance().startZoneBGM(entry.zone);
   }
 
   private computeLayout(): void {
@@ -1181,6 +1183,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      AudioService.getInstance().unlock();
       this.touchStartX = pointer.x;
       this.touchStartY = pointer.y;
     });
@@ -1239,11 +1242,14 @@ export class GameScene extends Phaser.Scene {
     const targetPixel = this.tileToPixel(nextState.player.x, nextState.player.y);
 
     this.isAnimating = true;
+    AudioService.getInstance().playStep();
 
     // Diamond collection animation
     const diamondKey = `${nextState.player.x},${nextState.player.y}`;
     const collectedDiamondGfx = this.diamondObjects.get(diamondKey);
     if (collectedDiamondGfx) {
+      AudioService.getInstance().playDiamond();
+      this.spawnSparkles(targetPixel.x, targetPixel.y, 0x38bdf8);
       this.tweens.add({
         targets: collectedDiamondGfx,
         scaleX: 1.5,
@@ -1261,6 +1267,8 @@ export class GameScene extends Phaser.Scene {
     const bootsKey = `${nextState.player.x},${nextState.player.y}`;
     const collectedBootsGfx = this.spikeBootsObjects.get(bootsKey);
     if (collectedBootsGfx) {
+      AudioService.getInstance().playKey();
+      this.spawnSparkles(targetPixel.x, targetPixel.y, 0xfde047);
       this.tweens.add({
         targets: collectedBootsGfx,
         scaleX: 1.8,
@@ -1278,6 +1286,8 @@ export class GameScene extends Phaser.Scene {
     const keyKey = `${nextState.player.x},${nextState.player.y}`;
     const collectedKeyGfx = this.keyObjects.get(keyKey);
     if (collectedKeyGfx) {
+      AudioService.getInstance().playKey();
+      this.spawnSparkles(targetPixel.x, targetPixel.y, 0xfbbf24);
       this.tweens.add({
         targets: collectedKeyGfx,
         scaleX: 1.6,
@@ -1295,6 +1305,7 @@ export class GameScene extends Phaser.Scene {
     const doorKey = `${nextState.player.x},${nextState.player.y}`;
     const unlockedDoorContainer = this.doorObjects.get(doorKey);
     if (unlockedDoorContainer) {
+      AudioService.getInstance().playDoor();
       this.tweens.add({
         targets: unlockedDoorContainer,
         scaleX: 0.1,
@@ -1312,6 +1323,8 @@ export class GameScene extends Phaser.Scene {
     const pickKey = `${nextState.player.x},${nextState.player.y}`;
     const collectedPickContainer = this.pickaxeObjects.get(pickKey);
     if (collectedPickContainer) {
+      AudioService.getInstance().playToolStrike();
+      this.spawnSparkles(targetPixel.x, targetPixel.y, 0x94a3b8);
       this.tweens.add({
         targets: collectedPickContainer,
         scaleX: 1.8,
@@ -1329,6 +1342,8 @@ export class GameScene extends Phaser.Scene {
     const fireKey = `${nextState.player.x},${nextState.player.y}`;
     const collectedFireContainer = this.fireObjects.get(fireKey);
     if (collectedFireContainer) {
+      AudioService.getInstance().playKey();
+      this.spawnSparkles(targetPixel.x, targetPixel.y, 0xf97316);
       this.tweens.add({
         targets: collectedFireContainer,
         scaleX: 1.8,
@@ -1346,6 +1361,9 @@ export class GameScene extends Phaser.Scene {
     const crackedKey = `${nextState.player.x},${nextState.player.y}`;
     const brokenWallGfx = this.crackedWallObjects.get(crackedKey);
     if (brokenWallGfx) {
+      AudioService.getInstance().playToolStrike();
+      AudioService.getInstance().playCrackedWallBreak();
+      this.cameras.main.shake(120, 0.01);
       this.tweens.add({
         targets: brokenWallGfx,
         scaleX: 0.1,
@@ -1363,6 +1381,8 @@ export class GameScene extends Phaser.Scene {
     const bushKey = `${nextState.player.x},${nextState.player.y}`;
     const burnedBushContainer = this.bushObjects.get(bushKey);
     if (burnedBushContainer) {
+      AudioService.getInstance().playBushBurn();
+      this.spawnSparkles(targetPixel.x, targetPixel.y, 0xef4444);
       this.tweens.add({
         targets: burnedBushContainer,
         scaleX: 0.1,
@@ -1378,6 +1398,7 @@ export class GameScene extends Phaser.Scene {
 
     // Block push animation
     if (isPushedBlock) {
+      AudioService.getInstance().playBlockPush();
       const beyondX = targetX + delta.x;
       const beyondY = targetY + delta.y;
       const oldBlockKey = `${targetX},${targetY}`;
@@ -1428,6 +1449,10 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Boulder animation
+    if (nextState.boulders && nextState.boulders.some(b => b.active)) {
+      AudioService.getInstance().playBoulderRoll();
+      this.cameras.main.shake(100, 0.008);
+    }
     if (nextState.boulders) {
       for (const b of nextState.boulders) {
         const boulderContainer = this.boulderObjects.get(b.id);
@@ -1511,25 +1536,98 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Move player with smooth tween
+    // Move player with smooth tween and walking squash/stretch
     this.tweens.add({
       targets: this.playerObject,
       x: targetPixel.x,
       y: targetPixel.y,
-      duration: 120,
+      duration: 110,
       ease: 'Cubic.easeOut',
+      onStart: () => {
+        this.tweens.add({
+          targets: this.playerObject,
+          scaleY: 0.88,
+          scaleX: 1.12,
+          duration: 55,
+          yoyo: true,
+          ease: 'Quad.easeInOut',
+        });
+      },
       onComplete: () => {
         this.isAnimating = false;
         this.updateSwitchesAndGates();
         this.updateHUD();
 
         if (nextState.status === 'won') {
+          AudioService.getInstance().playVictory();
+          this.spawnConfetti();
           this.showWinModal();
         } else if (nextState.status === 'lost') {
+          AudioService.getInstance().playHazardHit();
+          AudioService.getInstance().playDefeat();
+          this.cameras.main.shake(250, 0.02);
           this.showLoseModal();
         }
       },
     });
+  }
+
+  private spawnSparkles(x: number, y: number, color: number = 0x38bdf8): void {
+    for (let i = 0; i < 8; i++) {
+      const p = this.add.graphics();
+      p.fillStyle(color, 1);
+      p.fillCircle(0, 0, Phaser.Math.Between(2, 4));
+      p.setPosition(x, y);
+      p.setDepth(50);
+      this.tileContainer.add(p);
+
+      const angle = (i / 8) * Math.PI * 2;
+      const speed = Phaser.Math.Between(20, 45);
+      const targetX = x + Math.cos(angle) * speed;
+      const targetY = y + Math.sin(angle) * speed;
+
+      this.tweens.add({
+        targets: p,
+        x: targetX,
+        y: targetY,
+        alpha: 0,
+        scaleX: 0.2,
+        scaleY: 0.2,
+        duration: 320,
+        ease: 'Cubic.easeOut',
+        onComplete: () => p.destroy(),
+      });
+    }
+  }
+
+  private spawnConfetti(): void {
+    const colors = [0x38bdf8, 0xfacc15, 0x10b981, 0xf43f5e, 0xa855f7];
+    const width = this.scale.width;
+    const height = this.scale.height;
+
+    for (let i = 0; i < 40; i++) {
+      const p = this.add.graphics();
+      const col = colors[i % colors.length];
+      p.fillStyle(col, 1);
+      const size = Phaser.Math.Between(4, 8);
+      p.fillRect(-size / 2, -size / 2, size, size);
+      p.setPosition(
+        Phaser.Math.Between(width * 0.2, width * 0.8),
+        Phaser.Math.Between(height * 0.2, height * 0.5)
+      );
+      p.setDepth(100);
+
+      this.tweens.add({
+        targets: p,
+        y: p.y + Phaser.Math.Between(150, 350),
+        x: p.x + Phaser.Math.Between(-80, 80),
+        rotation: Phaser.Math.FloatBetween(-3, 3),
+        alpha: 0,
+        duration: Phaser.Math.Between(900, 1600),
+        ease: 'Quad.easeOut',
+        onComplete: () => p.destroy(),
+      });
+    }
   }
 
   private handleUndo(): void {

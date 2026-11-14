@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { SaveService } from '../services/SaveService';
+import { AudioService } from '../services/AudioService';
 import { LEVELS_MANIFEST } from '../levels/manifest';
 
 export class MainMenuScene extends Phaser.Scene {
@@ -110,6 +111,8 @@ export class MainMenuScene extends Phaser.Scene {
     const soundBtn = this.createSmallButton(width / 2 - 80, 590, SaveService.isSoundEnabled() ? '🔊 Sound: ON' : '🔇 Sound: OFF', () => {
       const next = !SaveService.isSoundEnabled();
       SaveService.setSoundEnabled(next);
+      SaveService.setMusicEnabled(next);
+      AudioService.getInstance().updateMusicState();
       soundBtn.text.setText(next ? '🔊 Sound: ON' : '🔇 Sound: OFF');
     });
 
