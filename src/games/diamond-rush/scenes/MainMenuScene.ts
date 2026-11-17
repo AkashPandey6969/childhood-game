@@ -103,12 +103,16 @@ export class MainMenuScene extends Phaser.Scene {
       this.scene.start('GameScene', { levelId: targetLevel });
     });
 
-    this.createMenuButton(width / 2, 516, '☰  LEVEL SELECT', 0x1e293b, 0x334155, () => {
+    this.createMenuButton(width / 2, 510, '☰  LEVEL SELECT', 0x1e293b, 0x334155, () => {
       this.scene.start('LevelSelectScene');
     });
 
+    this.createMenuButton(width / 2, 574, '⌂  GAMES MENU', 0x272730, 0x3f3f46, () => {
+      window.dispatchEvent(new CustomEvent('exit-to-hub'));
+    });
+
     // Sound Toggle Button
-    const soundBtn = this.createSmallButton(width / 2 - 80, 590, SaveService.isSoundEnabled() ? '🔊 Sound: ON' : '🔇 Sound: OFF', () => {
+    const soundBtn = this.createSmallButton(width / 2 - 80, 642, SaveService.isSoundEnabled() ? '🔊 Sound: ON' : '🔇 Sound: OFF', () => {
       const next = !SaveService.isSoundEnabled();
       SaveService.setSoundEnabled(next);
       SaveService.setMusicEnabled(next);
@@ -117,7 +121,7 @@ export class MainMenuScene extends Phaser.Scene {
     });
 
     // Reset Progress Button
-    this.createSmallButton(width / 2 + 80, 590, '↻ Reset Data', () => {
+    this.createSmallButton(width / 2 + 80, 642, '↻ Reset Data', () => {
       if (confirm('Reset all saved level progress and stars?')) {
         SaveService.resetProgress();
         this.scene.restart();
@@ -125,10 +129,10 @@ export class MainMenuScene extends Phaser.Scene {
     });
 
     // Footer info
-    this.add.text(width / 2, height - 32, 'Phaser 3 • Pure Turn-Based Engine', {
+    this.add.text(width / 2, height - 32, 'Arrow Keys or Swipe to Move • ESC to Pause', {
       fontFamily: 'monospace',
       fontSize: '11px',
-      color: '#475569',
+      color: '#64748b',
     }).setOrigin(0.5);
   }
 

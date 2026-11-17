@@ -15,6 +15,11 @@ import level12Raw from '../levels/level12_patrol.txt?raw';
 import level13Raw from '../levels/level13_seismic.txt?raw';
 import level14Raw from '../levels/level14_crucible.txt?raw';
 import level15Raw from '../levels/level15_master.txt?raw';
+import level16Raw from '../levels/level16_labyrinth.txt?raw';
+import level17Raw from '../levels/level17_gauntlet.txt?raw';
+import level18Raw from '../levels/level18_magma_vault.txt?raw';
+import level19Raw from '../levels/level19_inferno.txt?raw';
+import level20Raw from '../levels/level20_apex.txt?raw';
 
 describe('BFS Puzzle Solver (Phase 7)', () => {
   it('solves level 1 and reports exact shortest solution', () => {
@@ -106,6 +111,36 @@ describe('BFS Puzzle Solver (Phase 7)', () => {
     const result = solveLevel(level15Raw);
     expect(result.solved).toBe(true);
     expect(result.moves).toBe(22);
+  });
+
+  it('solves level 16 (labyrinth) optimally', () => {
+    const result = solveLevel(level16Raw);
+    expect(result.solved).toBe(true);
+    expect(result.moves).toBe(30);
+  });
+
+  it('solves level 17 (gauntlet) optimally', () => {
+    const result = solveLevel(level17Raw);
+    expect(result.solved).toBe(true);
+    expect(result.moves).toBe(26);
+  });
+
+  it('solves level 18 (magma vault) optimally', () => {
+    const result = solveLevel(level18Raw);
+    expect(result.solved).toBe(true);
+    expect(result.moves).toBe(22);
+  });
+
+  it('solves level 19 (inferno) optimally', () => {
+    const result = solveLevel(level19Raw);
+    expect(result.solved).toBe(true);
+    expect(result.moves).toBe(25);
+  });
+
+  it('solves level 20 (apex finale) optimally', () => {
+    const result = solveLevel(level20Raw);
+    expect(result.solved).toBe(true);
+    expect(result.moves).toBe(24);
   });
 
   it('rejects an impossible puzzle map and returns solved: false', () => {

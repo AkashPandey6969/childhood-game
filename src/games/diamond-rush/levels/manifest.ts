@@ -14,6 +14,11 @@ import level12Raw from './level12_patrol.txt?raw';
 import level13Raw from './level13_seismic.txt?raw';
 import level14Raw from './level14_crucible.txt?raw';
 import level15Raw from './level15_master.txt?raw';
+import level16Raw from './level16_labyrinth.txt?raw';
+import level17Raw from './level17_gauntlet.txt?raw';
+import level18Raw from './level18_magma_vault.txt?raw';
+import level19Raw from './level19_inferno.txt?raw';
+import level20Raw from './level20_apex.txt?raw';
 
 export type ZoneThemeId = 'temple' | 'cave' | 'volcano';
 
@@ -194,6 +199,46 @@ export const LEVELS_MANIFEST: LevelManifestEntry[] = [
     zone: 'volcano',
     raw: level15Raw,
     thresholds: { threeStars: 22, twoStars: 26 },
+  },
+  {
+    id: 'level16',
+    number: 16,
+    title: 'Crystal Labyrinth',
+    zone: 'cave',
+    raw: level16Raw,
+    thresholds: { threeStars: 30, twoStars: 34 },
+  },
+  {
+    id: 'level17',
+    number: 17,
+    title: 'The Spiked Gauntlet',
+    zone: 'cave',
+    raw: level17Raw,
+    thresholds: { threeStars: 26, twoStars: 30 },
+  },
+  {
+    id: 'level18',
+    number: 18,
+    title: 'Magma Vault',
+    zone: 'volcano',
+    raw: level18Raw,
+    thresholds: { threeStars: 22, twoStars: 26 },
+  },
+  {
+    id: 'level19',
+    number: 19,
+    title: 'Infernal Clockwork',
+    zone: 'volcano',
+    raw: level19Raw,
+    thresholds: { threeStars: 25, twoStars: 29 },
+  },
+  {
+    id: 'level20',
+    number: 20,
+    title: 'The Obsidian Citadel',
+    zone: 'volcano',
+    raw: level20Raw,
+    thresholds: { threeStars: 24, twoStars: 28 },
   },
 ];
 

@@ -3,6 +3,15 @@ import { SaveService } from '../services/SaveService';
 import { LEVELS_MANIFEST, ZONE_THEMES } from '../levels/manifest';
 
 export class LevelSelectScene extends Phaser.Scene {
+  private scrollContainer!: Phaser.GameObjects.Container;
+  private currentZoneFilter: 'all' | 'temple' | 'cave' | 'volcano' = 'all';
+  private filterButtons: Map<string, { bg: Phaser.GameObjects.Graphics; text: Phaser.GameObjects.Text }> = new Map();
+  private maxScrollY: number = 0;
+  private minScrollY: number = 0;
+  private isDragging: boolean = false;
+  private startPointerY: number = 0;
+  private startScrollY: number = 0;
+
   constructor() {
     super({ key: 'LevelSelectScene' });
   }
@@ -16,14 +25,17 @@ export class LevelSelectScene extends Phaser.Scene {
     bg.fillGradientStyle(0x0a0f1d, 0x0a0f1d, 0x030712, 0x030712, 1);
     bg.fillRect(0, 0, width, height);
 
+    // Scrollable container for cards
+    this.scrollContainer = this.add.container(0, 0);
+
     // Top Header Bar
     const headerBg = this.add.graphics();
-    headerBg.fillStyle(0x0f172a, 0.9);
-    headerBg.fillRect(0, 0, width, 70);
+    headerBg.fillStyle(0x0f172a, 0.95);
+    headerBg.fillRect(0, 0, width, 110);
     headerBg.lineStyle(1, 0x1e293b, 1);
     headerBg.beginPath();
-    headerBg.moveTo(0, 70);
-    headerBg.lineTo(width, 70);
+    headerBg.moveTo(0, 110);
+    headerBg.lineTo(width, 110);
     headerBg.strokePath();
 
     // Back Button
@@ -72,18 +84,121 @@ export class LevelSelectScene extends Phaser.Scene {
     }).setOrigin(0.5);
     starPill.add([starPillBg, starText]);
 
+    // Zone Filter Bar
+    this.createZoneFilterTabs(width);
+
     // Render Grid of Level Cards
     this.renderLevelGrid(width);
+
+    // Setup Drag & Wheel Scroll
+    this.setupScrolling();
+  }
+
+  private createZoneFilterTabs(width: number): void {
+    const tabs: { id: 'all' | 'temple' | 'cave' | 'volcano'; label: string }[] = [
+      { id: 'all', label: 'ALL (20)' },
+      { id: 'temple', label: 'TEMPLE' },
+      { id: 'cave', label: 'CAVERN' },
+      { id: 'volcano', label: 'MAGMA' },
+    ];
+
+    const tabW = 100;
+    const startX = width / 2 - (tabs.length * tabW) / 2 + tabW / 2;
+    const tabY = 82;
+
+    tabs.forEach((tab, idx) => {
+      const x = startX + idx * tabW;
+      const tabContainer = this.add.container(x, tabY);
+
+      const tabBg = this.add.graphics();
+      const tabText = this.add.text(0, 0, tab.label, {
+        fontFamily: 'monospace',
+        fontSize: '10px',
+        color: '#94a3b8',
+        fontStyle: 'bold',
+      }).setOrigin(0.5);
+
+      tabContainer.add([tabBg, tabText]);
+      tabContainer.setSize(tabW - 8, 26);
+      tabContainer.setInteractive({ useHandCursor: true });
+
+      this.filterButtons.set(tab.id, { bg: tabBg, text: tabText });
+
+      tabContainer.on('pointerdown', () => {
+        this.currentZoneFilter = tab.id;
+        this.updateFilterButtons();
+        this.scrollContainer.y = 0;
+        this.renderLevelGrid(width);
+      });
+    });
+
+    this.updateFilterButtons();
+  }
+
+  private updateFilterButtons(): void {
+    this.filterButtons.forEach((btn, id) => {
+      const active = id === this.currentZoneFilter;
+      btn.bg.clear();
+      if (active) {
+        btn.bg.fillStyle(0x2563eb, 1);
+        btn.bg.fillRoundedRect(-45, -13, 90, 26, 6);
+        btn.text.setColor('#ffffff');
+      } else {
+        btn.bg.fillStyle(0x1e293b, 0.8);
+        btn.bg.fillRoundedRect(-45, -13, 90, 26, 6);
+        btn.text.setColor('#94a3b8');
+      }
+    });
+  }
+
+  private setupScrolling(): void {
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (pointer.y >= 110) {
+        this.isDragging = true;
+        this.startPointerY = pointer.y;
+        this.startScrollY = this.scrollContainer.y;
+      }
+    });
+
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      if (this.isDragging && pointer.isDown) {
+        const delta = pointer.y - this.startPointerY;
+        this.scrollContainer.y = Phaser.Math.Clamp(
+          this.startScrollY + delta,
+          this.minScrollY,
+          this.maxScrollY
+        );
+      }
+    });
+
+    this.input.on('pointerup', () => {
+      this.isDragging = false;
+    });
+
+    this.input.on('wheel', (_pointer: any, _gameObjects: any, _deltaX: number, deltaY: number) => {
+      this.scrollContainer.y = Phaser.Math.Clamp(
+        this.scrollContainer.y - deltaY * 0.6,
+        this.minScrollY,
+        this.maxScrollY
+      );
+    });
   }
 
   private renderLevelGrid(width: number): void {
+    this.scrollContainer.removeAll(true);
+
     const cols = 3;
     const cardWidth = 124;
     const cardHeight = 150;
     const startX = (width - (cols * cardWidth + (cols - 1) * 16)) / 2 + cardWidth / 2;
-    const startY = 160;
+    const startY = 195;
 
-    LEVELS_MANIFEST.forEach((lvl, index) => {
+    const filtered = LEVELS_MANIFEST.filter(l => {
+      if (this.currentZoneFilter === 'all') return true;
+      return l.zone === this.currentZoneFilter;
+    });
+
+    filtered.forEach((lvl, index) => {
       const col = index % cols;
       const row = Math.floor(index / cols);
       const x = startX + col * (cardWidth + 16);
@@ -92,8 +207,16 @@ export class LevelSelectScene extends Phaser.Scene {
       const progress = SaveService.getLevelProgress(lvl.id);
       const zoneTheme = ZONE_THEMES[lvl.zone];
 
-      this.createLevelCard(x, y, cardWidth, cardHeight, lvl, progress, zoneTheme);
+      const card = this.createLevelCard(x, y, cardWidth, cardHeight, lvl, progress, zoneTheme);
+      this.scrollContainer.add(card);
     });
+
+    const totalRows = Math.ceil(filtered.length / cols);
+    const totalContentHeight = startY + totalRows * (cardHeight + 20) + 40;
+    const visibleAreaHeight = this.scale.height;
+
+    this.minScrollY = totalContentHeight > visibleAreaHeight ? visibleAreaHeight - totalContentHeight : 0;
+    this.maxScrollY = 0;
   }
 
   private createLevelCard(

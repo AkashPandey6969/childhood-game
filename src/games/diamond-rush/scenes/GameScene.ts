@@ -54,6 +54,8 @@ export class GameScene extends Phaser.Scene {
   private fireText!: Phaser.GameObjects.Text;
   private movesText!: Phaser.GameObjects.Text;
   private undoButtonText!: Phaser.GameObjects.Text;
+  private soundBtnText!: Phaser.GameObjects.Text;
+  private dpadContainer!: Phaser.GameObjects.Container;
   private winModalContainer?: Phaser.GameObjects.Container;
   private loseModalContainer?: Phaser.GameObjects.Container;
 
@@ -82,6 +84,9 @@ export class GameScene extends Phaser.Scene {
 
     // Build the HUD at the top
     this.createHUD();
+
+    // Build the Mobile On-Screen D-Pad
+    this.createDPad();
 
     // Register Input Handlers
     this.setupInputHandlers();
@@ -119,14 +124,14 @@ export class GameScene extends Phaser.Scene {
   private computeLayout(): void {
     const state = this.session.getState();
     const availableWidth = this.scale.width - 32;
-    const availableHeight = this.scale.height - 190;
+    const availableHeight = this.scale.height - 310;
 
-    this.tileSize = Math.floor(Math.min(availableWidth / state.width, availableHeight / state.height, 56));
+    this.tileSize = Math.floor(Math.min(availableWidth / state.width, availableHeight / state.height, 52));
     const gridPixelWidth = this.tileSize * state.width;
     const gridPixelHeight = this.tileSize * state.height;
 
     this.offsetX = Math.floor((this.scale.width - gridPixelWidth) / 2);
-    this.offsetY = Math.floor(140 + (availableHeight - gridPixelHeight) / 2);
+    this.offsetY = Math.floor(120 + (availableHeight - gridPixelHeight) / 2);
   }
 
   private tileToPixel(x: number, y: number): { x: number; y: number } {
@@ -1110,13 +1115,34 @@ export class GameScene extends Phaser.Scene {
       color: '#9ca3af',
     });
 
+    // Sound Toggle Button
+    const soundBtn = this.add.container(width - 282, 54);
+    const soundBg = this.add.graphics();
+    soundBg.fillStyle(0x1e293b, 1);
+    soundBg.fillRoundedRect(-18, -16, 36, 32, 6);
+    soundBg.lineStyle(1, 0x475569, 0.8);
+    soundBg.strokeRoundedRect(-18, -16, 36, 32, 6);
+    this.soundBtnText = this.add.text(0, 0, SaveService.isSoundEnabled() ? '🔊' : '🔇', {
+      fontSize: '13px',
+    }).setOrigin(0.5);
+    soundBtn.add([soundBg, this.soundBtnText]);
+    soundBtn.setSize(36, 32);
+    soundBtn.setInteractive({ useHandCursor: true });
+    soundBtn.on('pointerdown', () => {
+      const enabled = !SaveService.isSoundEnabled();
+      SaveService.setSoundEnabled(enabled);
+      SaveService.setMusicEnabled(enabled);
+      AudioService.getInstance().updateMusicState();
+      this.soundBtnText.setText(enabled ? '🔊' : '🔇');
+    });
+
     // Pause Button
-    const pauseBtn = this.add.container(width - 235, 54);
+    const pauseBtn = this.add.container(width - 225, 54);
     const pauseBg = this.add.graphics();
     pauseBg.fillStyle(0x1e293b, 1);
-    pauseBg.fillRoundedRect(-30, -16, 60, 32, 6);
+    pauseBg.fillRoundedRect(-28, -16, 56, 32, 6);
     pauseBg.lineStyle(1, 0x475569, 0.8);
-    pauseBg.strokeRoundedRect(-30, -16, 60, 32, 6);
+    pauseBg.strokeRoundedRect(-28, -16, 56, 32, 6);
     const pauseText = this.add.text(0, 0, '⏸ Pause', {
       fontFamily: 'system-ui, -apple-system, sans-serif',
       fontSize: '11px',
@@ -1124,7 +1150,7 @@ export class GameScene extends Phaser.Scene {
       fontStyle: 'bold',
     }).setOrigin(0.5);
     pauseBtn.add([pauseBg, pauseText]);
-    pauseBtn.setSize(60, 32);
+    pauseBtn.setSize(56, 32);
     pauseBtn.setInteractive({ useHandCursor: true });
     pauseBtn.on('pointerdown', () => this.handlePause());
 
@@ -1297,6 +1323,7 @@ export class GameScene extends Phaser.Scene {
       this.tweens.killTweensOf(collectedDiamondContainer);
       AudioService.getInstance().playDiamond();
       this.spawnSparkles(targetPixel.x, targetPixel.y, 0x38bdf8);
+      this.spawnFloatingText(targetPixel.x, targetPixel.y, '+1 💎', '#38bdf8');
       this.tweens.add({
         targets: collectedDiamondContainer,
         scaleX: 1.5,
@@ -1318,6 +1345,7 @@ export class GameScene extends Phaser.Scene {
       this.tweens.killTweensOf(collectedBootsContainer);
       AudioService.getInstance().playKey();
       this.spawnSparkles(targetPixel.x, targetPixel.y, 0xfde047);
+      this.spawnFloatingText(targetPixel.x, targetPixel.y, 'Spike Boots! 👢', '#fde047');
       this.tweens.add({
         targets: collectedBootsContainer,
         scaleX: 1.8,
@@ -1338,6 +1366,7 @@ export class GameScene extends Phaser.Scene {
       this.tweens.killTweensOf(collectedKeyContainer);
       AudioService.getInstance().playKey();
       this.spawnSparkles(targetPixel.x, targetPixel.y, 0xfbbf24);
+      this.spawnFloatingText(targetPixel.x, targetPixel.y, '+1 Key 🔑', '#fbbf24');
       this.tweens.add({
         targets: collectedKeyContainer,
         scaleX: 1.6,
@@ -1357,6 +1386,7 @@ export class GameScene extends Phaser.Scene {
     if (unlockedDoorContainer) {
       this.tweens.killTweensOf(unlockedDoorContainer);
       AudioService.getInstance().playDoor();
+      this.spawnFloatingText(targetPixel.x, targetPixel.y, 'Unlocked! 🚪', '#c084fc');
       this.tweens.add({
         targets: unlockedDoorContainer,
         scaleX: 0.1,
@@ -1377,6 +1407,7 @@ export class GameScene extends Phaser.Scene {
       this.tweens.killTweensOf(collectedPickContainer);
       AudioService.getInstance().playToolStrike();
       this.spawnSparkles(targetPixel.x, targetPixel.y, 0x94a3b8);
+      this.spawnFloatingText(targetPixel.x, targetPixel.y, 'Pickaxe! ⛏️', '#cbd5e1');
       this.tweens.add({
         targets: collectedPickContainer,
         scaleX: 1.8,
@@ -1397,6 +1428,7 @@ export class GameScene extends Phaser.Scene {
       this.tweens.killTweensOf(collectedFireContainer);
       AudioService.getInstance().playKey();
       this.spawnSparkles(targetPixel.x, targetPixel.y, 0xf97316);
+      this.spawnFloatingText(targetPixel.x, targetPixel.y, 'Fire Brand! 🔥', '#f97316');
       this.tweens.add({
         targets: collectedFireContainer,
         scaleX: 1.8,
@@ -1418,6 +1450,7 @@ export class GameScene extends Phaser.Scene {
       AudioService.getInstance().playToolStrike();
       AudioService.getInstance().playCrackedWallBreak();
       this.cameras.main.shake(120, 0.01);
+      this.spawnFloatingText(targetPixel.x, targetPixel.y, 'SMASH! 💥', '#e2e8f0');
       this.tweens.add({
         targets: brokenWallContainer,
         scaleX: 0.1,
@@ -1438,6 +1471,7 @@ export class GameScene extends Phaser.Scene {
       this.tweens.killTweensOf(burnedBushContainer);
       AudioService.getInstance().playBushBurn();
       this.spawnSparkles(targetPixel.x, targetPixel.y, 0xef4444);
+      this.spawnFloatingText(targetPixel.x, targetPixel.y, 'BURN! 🔥', '#ef4444');
       this.tweens.add({
         targets: burnedBushContainer,
         scaleX: 0.1,
@@ -1645,6 +1679,90 @@ export class GameScene extends Phaser.Scene {
           this.cameras.main.shake(250, 0.02);
           this.showLoseModal();
         }
+      },
+    });
+  }
+
+  private createDPad(): void {
+    if (this.dpadContainer) {
+      this.dpadContainer.destroy();
+    }
+
+    const width = this.scale.width;
+    const height = this.scale.height;
+    const centerX = width / 2;
+    const centerY = height - 74;
+
+    this.dpadContainer = this.add.container(centerX, centerY);
+    this.dpadContainer.setDepth(100);
+
+    const btnSize = 46;
+    const offset = 48;
+
+    const dirs: { dir: Direction; label: string; x: number; y: number }[] = [
+      { dir: 'up', label: '▲', x: 0, y: -offset },
+      { dir: 'down', label: '▼', x: 0, y: offset },
+      { dir: 'left', label: '◀', x: -offset, y: 0 },
+      { dir: 'right', label: '▶', x: offset, y: 0 },
+    ];
+
+    dirs.forEach(({ dir, label, x, y }) => {
+      const btn = this.add.container(x, y);
+
+      const bg = this.add.graphics();
+      bg.fillStyle(0x0f172a, 0.88);
+      bg.fillRoundedRect(-btnSize / 2, -btnSize / 2, btnSize, btnSize, 10);
+      bg.lineStyle(1.5, 0x38bdf8, 0.6);
+      bg.strokeRoundedRect(-btnSize / 2, -btnSize / 2, btnSize, btnSize, 10);
+
+      const txt = this.add.text(0, 0, label, {
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        fontSize: '18px',
+        color: '#f8fafc',
+        fontStyle: 'bold',
+      }).setOrigin(0.5);
+
+      btn.add([bg, txt]);
+      btn.setSize(btnSize, btnSize);
+      btn.setInteractive({ useHandCursor: true });
+
+      btn.on('pointerdown', () => {
+        btn.setScale(0.88);
+        this.handleMove(dir);
+      });
+      btn.on('pointerup', () => {
+        btn.setScale(1.0);
+      });
+      btn.on('pointerout', () => {
+        btn.setScale(1.0);
+      });
+
+      this.dpadContainer.add(btn);
+    });
+  }
+
+  private spawnFloatingText(x: number, y: number, text: string, color: string = '#f8fafc'): void {
+    const floatText = this.add.text(x, y - 10, text, {
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontSize: '13px',
+      color: color,
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setOrigin(0.5);
+    floatText.setDepth(60);
+    this.tileContainer.add(floatText);
+
+    this.tweens.add({
+      targets: floatText,
+      y: y - 46,
+      alpha: 0,
+      scaleX: 1.15,
+      scaleY: 1.15,
+      duration: 650,
+      ease: 'Cubic.easeOut',
+      onComplete: () => {
+        floatText.destroy();
       },
     });
   }

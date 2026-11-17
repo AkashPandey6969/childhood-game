@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.gemdelver.game',
-  appName: 'Gem Delver',
+  appId: 'com.retroarcade.vault',
+  appName: 'Retro Arcade Vault',
   webDir: 'dist',
   server: {
     androidScheme: 'https',

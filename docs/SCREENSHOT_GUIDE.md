@@ -54,10 +54,10 @@ Capturing screenshots that highlight key mechanics in a narrative progression wi
 - **Top Caption**: *"WIELD ANCIENT TOOLS"*
 - **Sub-caption**: *"Pickaxes and torches unlock secret paths"*
 
-### Slide 5: "15 Hand-Crafted Brain Teasers"
+### Slide 5: "20 Hand-Crafted Brain Teasers"
 - **Scene**: Level Select Screen
 - **Visuals**: Level cards showing Ancient Temple, Crystal Caverns, and Magma Core zones with 3-star ratings.
-- **Top Caption**: *"15 HAND-CRAFTED LEVELS"*
+- **Top Caption**: *"20 HAND-CRAFTED LEVELS"*
 - **Sub-caption**: *"Earn 3 stars by discovering optimal paths"*
 
 ### Slide 6: "Pure Puzzles • Zero Distractions"

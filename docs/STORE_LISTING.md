@@ -13,7 +13,7 @@
 
 ## 2. Short Description *(79 / 80 characters)*
 
-Delve ancient ruins, dodge boulders, outsmart beasts, and solve 15 pure puzzles!
+Delve ancient ruins, dodge boulders, outsmart beasts, and solve 20 pure puzzles!
 
 ---
 
@@ -23,11 +23,11 @@ Descend into the forgotten ruins of an ancient civilization in **Gem Delver**, a
 
 Every move counts. Think ahead, maneuver through perilous chambers, manipulate ancient mechanisms, and claim radiant diamonds before finding your way to the exit.
 
-### 🏛️ 15 HAND-CRAFTED PUZZLE LEVELS
+### 🏛️ 20 HAND-CRAFTED PUZZLE LEVELS
 Journey through three uniquely themed subterranean zones:
 - **The Ancient Temple**: Learn the fundamentals of block pushing, secret vaults, pressure plates, and chasm bridging.
-- **The Crystal Caverns**: Navigate deadly spike pits, outsmart rolling boulders, and bypass patrolling subterranean beasts.
-- **The Magma Core**: The ultimate test of logic and timing—wield heavy pickaxes to shatter cracked stone, ignite overgrown thorn bushes, and conquer intricate mechanical master puzzles.
+- **The Crystal Caverns**: Navigate deadly spike pits, outsmart rolling boulders, and bypass patrolling subterranean beasts across expanded labyrinths.
+- **The Magma Core**: The ultimate test of logic and timing—wield heavy pickaxes to shatter cracked stone, ignite overgrown thorn bushes, and conquer intricate mechanical master puzzles in the Obsidian Citadel.
 
 ### 🧠 PURE DETERMINISTIC LOGIC
 - **No Randomness, No Timers**: Take all the time you need. Every enemy patrol and rolling boulder responds predictably to your actions.

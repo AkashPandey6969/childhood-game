@@ -1,5 +1,17 @@
-node_modules
-dist
-dist-ssr
+node_modules/
+dist/
+dist-ssr/
 *.local
+*.log
 .DS_Store
+Thumbs.db
+
+# Android build outputs
+.gradle/
+build/
+android/.gradle/
+android/build/
+android/app/build/
+android/captures/
+android/.idea/
+*.iml

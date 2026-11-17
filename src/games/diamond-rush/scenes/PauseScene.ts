@@ -28,7 +28,7 @@ export class PauseScene extends Phaser.Scene {
 
     // Modal Card
     const cardW = 320;
-    const cardH = 390;
+    const cardH = 430;
     const card = this.add.container(width / 2, height / 2);
 
     const cardBg = this.add.graphics();
@@ -39,7 +39,7 @@ export class PauseScene extends Phaser.Scene {
     card.add(cardBg);
 
     // Title
-    const title = this.add.text(0, -cardH / 2 + 40, 'GAME PAUSED', {
+    const title = this.add.text(0, -cardH / 2 + 35, 'GAME PAUSED', {
       fontFamily: 'system-ui, -apple-system, sans-serif',
       fontSize: '22px',
       color: '#f8fafc',
@@ -50,7 +50,7 @@ export class PauseScene extends Phaser.Scene {
     // Current Level Info
     const lvlEntry = getLevelEntry(this.levelId);
     if (lvlEntry) {
-      const lvlText = this.add.text(0, -cardH / 2 + 72, `Level ${lvlEntry.number}: ${lvlEntry.title}`, {
+      const lvlText = this.add.text(0, -cardH / 2 + 64, `Level ${lvlEntry.number}: ${lvlEntry.title}`, {
         fontFamily: 'system-ui, -apple-system, sans-serif',
         fontSize: '13px',
         color: '#94a3b8',
@@ -59,13 +59,13 @@ export class PauseScene extends Phaser.Scene {
     }
 
     // Buttons
-    let btnY = -60;
+    let btnY = -85;
 
     // Resume
     this.addModalButton(card, 0, btnY, '▶  Resume', 0x2563eb, () => {
       this.resumeGame();
     });
-    btnY += 60;
+    btnY += 52;
 
     // Restart
     this.addModalButton(card, 0, btnY, '↻  Restart Level', 0x334155, () => {
@@ -75,7 +75,7 @@ export class PauseScene extends Phaser.Scene {
         gameScene.restartLevel();
       }
     });
-    btnY += 60;
+    btnY += 52;
 
     // Level Select
     this.addModalButton(card, 0, btnY, '☰  Level Select', 0x1e293b, () => {
@@ -83,13 +83,21 @@ export class PauseScene extends Phaser.Scene {
       this.scene.stop();
       this.scene.start('LevelSelectScene');
     });
-    btnY += 60;
+    btnY += 52;
 
     // Main Menu
     this.addModalButton(card, 0, btnY, '⌂  Main Menu', 0x1e293b, () => {
       this.scene.stop('GameScene');
       this.scene.stop();
       this.scene.start('MainMenuScene');
+    });
+    btnY += 52;
+
+    // Games Menu (Hub)
+    this.addModalButton(card, 0, btnY, '⌂  Games Menu', 0x272730, () => {
+      this.scene.stop('GameScene');
+      this.scene.stop();
+      window.dispatchEvent(new CustomEvent('exit-to-hub'));
     });
 
     // Sound toggle at bottom
